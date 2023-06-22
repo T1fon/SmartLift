@@ -11,7 +11,7 @@ else()
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
 
-	set(OPENSSL_ROOT_DIR "C:/Vato/My_Programs/LKDS/OpenSSLBuild")
+	set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
 	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
