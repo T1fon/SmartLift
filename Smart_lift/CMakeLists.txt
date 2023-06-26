@@ -13,6 +13,7 @@ else()
 
 	set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
 	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+	set(MODULES "Modules")
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
@@ -26,7 +27,8 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h")
+set(MOD_Server "${MODULES}/Server.hpp" "${MODULES}Server.cpp")
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Modules/Server.cpp")
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
