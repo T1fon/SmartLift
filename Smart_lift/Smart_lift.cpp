@@ -39,7 +39,7 @@ int main()
 				}
 			);
 		}
-		make_shared<Client>(ioc)->RunClient(addr, por, target, 1.0);
+		make_shared<Client>(ioc)->RunClient(addr, por, target, 11);
 		ioc.run();
 		//make_shared<Client>(ioc)->RunClient(addr, por, target , 1.0);
 	}
