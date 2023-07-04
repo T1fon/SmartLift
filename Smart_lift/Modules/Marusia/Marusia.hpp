@@ -19,15 +19,45 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-beast::string_view
-mime_type(beast::string_view path);
+beast::string_view MineType(beast::string_view path)
+{
+    using beast::iequals;
+    auto const ext = [&path]
+    {
+        auto const pos = path.rfind(".");
+        if (pos == beast::string_view::npos)
+        {
+            return beast::string_view{};
+        }
+        return path.substr(pos);
+    }();
+    if (iequals(ext, ".htm"))  return "text/html";
+    if (iequals(ext, ".html")) return "text/html";
+    if (iequals(ext, ".php"))  return "text/html";
+    if (iequals(ext, ".css"))  return "text/css";
+    if (iequals(ext, ".txt"))  return "text/plain";
+    if (iequals(ext, ".js"))   return "application/javascript";
+    if (iequals(ext, ".json")) return "application/json";
+    if (iequals(ext, ".xml"))  return "application/xml";
+    if (iequals(ext, ".swf"))  return "application/x-shockwave-flash";
+    if (iequals(ext, ".flv"))  return "video/x-flv";
+    if (iequals(ext, ".png"))  return "image/png";
+    if (iequals(ext, ".jpe"))  return "image/jpeg";
+    if (iequals(ext, ".jpeg")) return "image/jpeg";
+    if (iequals(ext, ".jpg"))  return "image/jpeg";
+    if (iequals(ext, ".gif"))  return "image/gif";
+    if (iequals(ext, ".bmp"))  return "image/bmp";
+    if (iequals(ext, ".ico"))  return "image/vnd.microsoft.icon";
+    if (iequals(ext, ".tiff")) return "image/tiff";
+    if (iequals(ext, ".tif"))  return "image/tiff";
+    if (iequals(ext, ".svg"))  return "image/svg+xml";
+    if (iequals(ext, ".svgz")) return "image/svg+xml";
+    return "application/text";
+}
 
 string PathCat(beast::string_view base, beast::string_view path);
-template <class Body, class Allocator>
-http::message_generator
-HandleReq(
-    beast::string_view root,
-    http::request<Body, http::basic_fields<Allocator>>&& req);
+template <class Body, class Allocator> http::message_generator
+HandleReq(beast::string_view root, http::request<Body, http::basic_fields<Allocator>>&& req);
 
 void fail(beast::error_code ErrCode, char const* what);
 
@@ -55,7 +85,7 @@ class Listener : public enable_shared_from_this<Listener>
 {
     net::io_context& ioc;
     tcp::acceptor acceptor;
-    shared_ptr<string const> doocRoot;
+    shared_ptr<string const> const& doocRoot;
 
 public:
     Listener(net::io_context& Ioc, tcp::endpoint endpoint, std::shared_ptr<std::string const> const& doc_root)
@@ -67,8 +97,8 @@ public:
         acceptor.open(endpoint.protocol(), errorCode);
         if (errorCode)
         {
-            fail(errorCode, "open");
-            return;
+             fail(errorCode, "open");
+             return;
         }
 
         acceptor.set_option(net::socket_base::reuse_address(true), errorCode);
@@ -77,7 +107,7 @@ public:
             fail(errorCode, "set_option");
             return;
         }
-
+        
         acceptor.bind(endpoint, errorCode);
         if (errorCode)
         {

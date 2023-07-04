@@ -27,8 +27,9 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Server "${MODULES}/Server.hpp" "${MODULES}Server.cpp")
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Modules/Server.cpp")
+set(MOD_Server "${MODULES}/Server.hpp" "${MODULES}/Server.cpp")
+set(MOD_Client "${MODULES}/Client/Client.hpp" "${MODULES}/Client/Client.cpp")
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Modules/Server.cpp" "Modules/Client/Client.cpp")
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
