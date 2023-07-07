@@ -1,13 +1,7 @@
-﻿# CMakeList.txt: проект CMake для Smart_lift; включите исходный код и определения,
-# укажите здесь логику для конкретного проекта.
-#
-
-# Добавьте источник в исполняемый файл этого проекта.
-
 if(UNIX)
 	set(BOOST_PATH "")
 else() 
-	set(BOOST_ROOT "../../boost_1_82_0")
+	set(BOOST_ROOT "../../../boost_1_82_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
 
@@ -30,10 +24,12 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
+set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
+set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
 set(MOD_MQTT_Broker "${MODULES}/MQTTBroker/MQTTBroker.hpp" "${MODULES}/MQTTBroker/MQTTBroker.cpp")
-set(SOURCE_MODULES ${MOD_MQTT_Broker})
+set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_HTTPS_Server} ${MOD_Sertificate})
 
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" ${SOURCE_MODULES})
+add_executable (MainServer "MainServer.cpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -44,23 +40,24 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	message(CONFIG " OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR}")
 	message(CONFIG " BOOST_INCLUDEDIR ${Boost_INCLUDE_DIRS}")
 	message(CONFIG " MQTT_ROOT ${MQTT_PATH}")
-	set_property(TARGET Smart_lift PROPERTY CXX_STANDARD 20)
+	set_property(TARGET MainServer PROPERTY CXX_STANDARD 20)
 
-	target_include_directories(Smart_lift PUBLIC ${Boost_INCLUDE_DIRS})
-	target_include_directories(Smart_lift PUBLIC ${OPENSSL_INCLUDE_DIR})
-	target_include_directories(Smart_lift PUBLIC ${MQTT_PATH})
+	target_include_directories(MainServer PUBLIC ${Boost_INCLUDE_DIRS})
+	target_include_directories(MainServer PUBLIC ${OPENSSL_INCLUDE_DIR})
+	target_include_directories(MainServer PUBLIC ${MQTT_PATH})
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 
-	target_link_libraries(Smart_lift PUBLIC Boost::thread)
-	target_link_libraries(Smart_lift PUBLIC OpenSSL::SSL)
-	target_link_libraries(Smart_lift PUBLIC OpenSSL::Crypto)
-	#add_library(mqtt_cpp_iface INTERFACE)
+	target_link_libraries(MainServer PUBLIC Boost::thread)
+	target_link_libraries(MainServer PUBLIC Boost::json)
+	target_link_libraries(MainServer PUBLIC OpenSSL::SSL)
+	target_link_libraries(MainServer PUBLIC OpenSSL::Crypto)
+	
+	
 	
 else()
-	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
-	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")
+	message(CONFIG " �� ����������� ���������� Boost ������ 1.82.0")
+	message(CONFIG " ��� �� ����������� ���������� OpenSSL 3.1.1")
 endif()
-
-# TODO: Добавьте тесты и целевые объекты, если это необходимо.

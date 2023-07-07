@@ -7,3 +7,11 @@ project ("Smart_lift")
 
 # Включите подпроекты.
 add_subdirectory ("Smart_lift")
+
+project("MainServer")
+
+add_subdirectory("Smart_lift/MainServer")
+
+project("MQTT_Worker")
+
+add_subdirectory("Smart_lift/MQTT_Worker")
