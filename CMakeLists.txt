@@ -7,3 +7,11 @@ project ("Smart_lift")
 
 # Включите подпроекты.
 add_subdirectory ("Smart_lift")
+
+project ("Vorker")
+
+add_subdirectory("Smart_lift/Vorker")
+
+project("DataBase")
+
+add_subdirectory("Smart_lift/DataBase")

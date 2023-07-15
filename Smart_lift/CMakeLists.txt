@@ -13,6 +13,8 @@ else()
 
 	set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
 	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+
+
 	set(MODULES "Modules")
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
@@ -27,17 +29,21 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Server "${MODULES}/Server.hpp" "${MODULES}/Server.cpp")
-set(MOD_Client "${MODULES}/Client/Client.hpp" "${MODULES}/Client/Client.cpp")
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Modules/Server.cpp" "Modules/Client/Client.cpp")
+
+
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Log.cpp" "Config.cpp")
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
+
+
 if(Boost_FOUND AND OpenSSL_FOUND)
 	message(CONFIG " OPENSSL_INCLUDE_DIR ${OPENSSL_INCLUDE_DIR}")
 	message(CONFIG " OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}")
 	message(CONFIG " OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR}")
 	message(CONFIG " BOOST_INCLUDEDIR ${Boost_INCLUDE_DIRS}")
+
+
 	set_property(TARGET Smart_lift PROPERTY CXX_STANDARD 20)
 
 	target_include_directories(Smart_lift PUBLIC ${Boost_INCLUDE_DIRS})
@@ -45,6 +51,7 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+
 
 	target_link_libraries(Smart_lift PUBLIC Boost::thread)
 	target_link_libraries(Smart_lift PUBLIC OpenSSL::SSL)
