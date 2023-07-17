@@ -1,14 +1,40 @@
 #include "Config.hpp"
 
 
-void Config::writeError(int error)
+Config::Config(shared_ptr<Log> lg, string boofWay)
 {
-	logConfig.writeLog(error, "Config", "open config");
+	setLog(lg);
+	setWay(boofWay);//указать путь относительно папки Smart_lift(DataBase\\Modules\\)файл config указывать не нужно
+	__way = __way + __boofWay + __conf;
+	ifstream fin(__way);
+	if (!fin.is_open())
+	{
+		writeError(NOT_FOUND_CONFIG_FILE);
+	}
+	else
+	{
+		fin.close();
+	}
 }
 
-map <string, string> Config::readConfig()
+void Config::setLog(shared_ptr<Log> lg)
 {
-	ifstream fin(way);
+	__logConfig = lg;
+}
+
+void Config::setWay(string boof)
+{
+	__boofWay = boof;
+}
+
+void Config::writeError(int error)
+{
+	__logConfig->writeLog(error, "Config", "open config");
+}
+
+void Config::readConfig()
+{
+	ifstream fin(__way);
 	if (fin.is_open())
 	{
 		map <string, string> config;
@@ -23,15 +49,16 @@ map <string, string> Config::readConfig()
 			config.insert(pair<string, string>(key, boof));
 
 		}
-		logConfig.writeLog(0, "config", "Write Config");
-		return config;
+		__logConfig->writeLog(0, "config", "Write Config");
+		__configInfo = config;
 	}
 	else
 	{
 		writeError(NOT_FOUND_CONFIG_FILE);
-		map <string, string> config = { {"0", "0"} };
-		logConfig.writeLog(0, "config", "Write Config");
-		return config;
+		return;
 	}
-
+}
+map<string, string> Config::getConfigInfo()
+{
+	return __configInfo;
 }

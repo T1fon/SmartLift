@@ -1,13 +1,34 @@
 #include "Log.hpp"
 
+Log::Log(string bufWay, string name) : __bufWay(bufWay), __nameFile(name)
+{
+	setBufWay(bufWay);//указать отностительный путь в папку записи логов опуская Smart_lift(DataBase\\Log\\)
+	setNameFile(name);//указать название программы(Database)
+	__way = __way + bufWay;
+	__date = getDate();
+	__numFile = 1;
+	__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+	__numMassive = 2;
+}
+
+void Log::setBufWay(string boof)
+{
+	__bufWay = boof;
+}
+
+void Log::setNameFile(string boof)
+{
+	__nameFile = boof;
+}
+
 
 void Log::writeLog(int error, string clas, string message)
 {
 	bool flagFile = checkFile();
 	if (flagFile == false)
 	{
-		ofstream ost(nameLogFile, ios::app);
-		string buffLog = "(" + date + ")_" + clas + "_" + "\"" + message + "\"";
+		ofstream ost(__nameLogFile, ios::app);
+		string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
 		if (error != 0)
 		{
 			buffLog = buffLog + "_" + to_string(error);
@@ -15,7 +36,6 @@ void Log::writeLog(int error, string clas, string message)
 		buffLog = buffLog + "\n";
 		ost << buffLog;
 		ost.close();
-		cout << 0 << endl;
 	}
 	else
 	{
@@ -23,34 +43,30 @@ void Log::writeLog(int error, string clas, string message)
 		streamsize fileSize = getFileSize();
 		if (fileSize >= 204800)
 		{
-			if (date == buffDate)
+			if (__date == buffDate)
 			{
-				numFile++;
-				nameLogFile = way + nameFile + "_(" + date + ")_" + to_string(numFile) + ".log";
-				cout << 1 << endl;
+				__numFile++;
+				__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
 			}
 			else
 			{
-				date = buffDate;
-				numFile = 1;
-				nameLogFile = way + nameFile + "_(" + date + ")_" + to_string(numFile) + ".log";
-				cout << 2 << endl;
+				__date = buffDate;
+				__numFile = 1;
+				__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
 			}
 		}
-		else if (buffDate != date)
+		else if (buffDate != __date)
 		{
-			date = buffDate;
-			numFile = 1;
-			nameLogFile = way + nameFile + "_(" + date + ")_" + to_string(numFile) + ".log";
-			cout << 4 << endl;
+			__date = buffDate;
+			__numFile = 1;
+			__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
 		}
 		else
 		{
-			nameLogFile = way + nameFile + "_(" + date + ")_" + to_string(numFile) + ".log";
-			cout << 5 << endl;
+			__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
 		}
-		ofstream ost(nameLogFile, ios::app);
-		string buffLog = "(" + date + ")_" + clas + "_" + "\"" + message + "\"";
+		ofstream ost(__nameLogFile, ios::app);
+		string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
 		if (error != 0)
 		{
 			buffLog = buffLog + "_" + to_string(error);
@@ -58,7 +74,6 @@ void Log::writeLog(int error, string clas, string message)
 		buffLog = buffLog + "\n";
 		ost << buffLog;
 		ost.close();
-		cout << 6 << endl;
 	}
 }
 
@@ -76,7 +91,7 @@ string Log::getDate()
 
 bool Log::checkFile()
 {
-	ifstream fin(nameLogFile);
+	ifstream fin(__nameLogFile);
 	if (fin.is_open())
 	{
 		return true;
@@ -90,7 +105,7 @@ bool Log::checkFile()
 
 streamsize Log::getFileSize()
 {
-	fstream file(nameLogFile, fstream::in);
+	fstream file(__nameLogFile, fstream::in);
 	file.seekg(0, ios::end);
 	streamsize fileSize = file.tellg();
 	file.close();
@@ -100,34 +115,34 @@ streamsize Log::getFileSize()
 
 void Log::writeTempLog(int error, string clas, string message)
 {
-	string buffLog = "(" + date + ")_" + clas + "_" + "\"" + message + "\"";
+	string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
 	if (error != 0)
 	{
 		buffLog = buffLog + "_" + to_string(error);
 	}
-	switch (numMassive)
+	switch (__numMassive)
 	{
 	case 2:
 	{
-		temporaryLog[numMassive] = buffLog;
-		numMassive = 1;
+		__temporaryLog[__numMassive] = buffLog;
+		__numMassive = 1;
 		break;
 	}
 	case 1:
 	{
-		temporaryLog[numMassive] = temporaryLog[numMassive + 1];
-		temporaryLog[numMassive + 1] = buffLog;
-		numMassive = 0;
+		__temporaryLog[__numMassive] = __temporaryLog[__numMassive + 1];
+		__temporaryLog[__numMassive + 1] = buffLog;
+		__numMassive = 0;
 		break;
 	}
 	case 0:
 	{
 		for (int i = 0; i < 2; i++)
 		{
-			temporaryLog[i] = temporaryLog[i + 1];
+			__temporaryLog[i] = __temporaryLog[i + 1];
 		}
-		numMassive = 2;
-		temporaryLog[numMassive] = buffLog;
+		__numMassive = 2;
+		__temporaryLog[__numMassive] = buffLog;
 		break;
 	}
 	default:
