@@ -27,11 +27,6 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-#define CONFIG_FILE "config.txt"
-#define NOT_FOUND_CONFIG_FILE 1
-#define SYNCHONIZATION_BD_ERROR 2
-#define CONNECT_ERROR 3
-#define DISCONNECT_ERROR 4
 /*
 void fail(beast::error_code ErrCode, char const* what);
 
@@ -106,52 +101,3 @@ private:
     void __DoAccept();
     void __OnAccept(beast::error_code errorCode, tcp::socket socket);
 };*/
-
-class Log : public enable_shared_from_this<Log>
-{
-public:
-    Log()
-    {
-        date = getDate();
-        numFile = 1; 
-        nameFile = "DataBase";
-        nameLogFile = way + nameFile + "_(" + date + ")_" + to_string(numFile) + ".log";
-        numMassive = 2;
-    }
-    void writeLog(int error, string clas, string message);
-    string nameFile;
-    string nameLogFile;
-    string date;
-    int numFile;
-    int numMassive;
-    string temporaryLog[3];
-    string way = "..\\..\\..\\..\\..\\Smart_lift\\DataBase\\Log\\";
-    string getDate();
-    bool checkFile();
-    streamsize getFileSize();
-    void writeTempLog(int error, string clas, string message);
-};
-
-class Config : public enable_shared_from_this<Config>
-{
-public:
-    Config(Log& lg) : logConfig(lg)
-    {
-        ifstream fin(way);
-        if (!fin.is_open())
-        {
-            writeError(NOT_FOUND_CONFIG_FILE);
-        }
-        else
-        {
-            fin.close();
-        }
-
-    }
-    string conf = CONFIG_FILE;
-    string way = "..\\..\\..\\..\\..\\Smart_lift\\DataBase\\" + conf;
-    Log logConfig;
-    void writeError(int error);
-    map<string, string> readConfig();
-
-};

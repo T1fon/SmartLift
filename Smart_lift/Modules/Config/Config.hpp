@@ -1,4 +1,4 @@
-#include <algorithm>
+/*#include <algorithm>
 #include <cstdlib>
 #include <functional>
 #include <iostream>
@@ -21,23 +21,17 @@ using namespace std;
 class Config : public enable_shared_from_this<Config>
 {
 public:
-    Config(Log& lg) : logConfig(lg)
-    {
-        ifstream fin(way);
-        if (!fin.is_open())
-        {
-            writeError(NOT_FOUND_CONFIG_FILE);
-        }
-        else
-        {
-            fin.close();
-        }
-
-    }
-    string conf = CONFIG_FILE;
-    string way = "..\\..\\..\\..\\..\\Smart_lift\\DataBase\\" + conf;
-    Log logConfig;
+    Config(shared_ptr<Log> lg, string boofWay);
+    map<string, string>getConfigInfo();
     void writeError(int error);
-    map<string, string> readConfig();
+    void readConfig();
+    void setLog(shared_ptr<Log> lg);
+    void setWay(string boof);
+private:
+    string __conf = CONFIG_FILE;
+    string __boofWay;
+    string __way = "..\\..\\..\\..\\..\\Smart_lift\\";
+    shared_ptr<Log> __logConfig;
+    map<string, string> __configInfo;
 
-};
+};*/

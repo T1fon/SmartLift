@@ -31,7 +31,7 @@ set(OPENSSL_MSVC_STATIC_RT		 ON)
 
 
 
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" "Log.cpp" "Config.cpp")
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h")
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
