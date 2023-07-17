@@ -30,7 +30,7 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_MQTT_Broker "${MODULES}/MQTTBroker/MQTTBroker.hpp" "${MODULES}/MQTTBroker/MQTTBroker.cpp")
+
 set(SOURCE_MODULES ${MOD_MQTT_Broker})
 
 add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" ${SOURCE_MODULES})
