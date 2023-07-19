@@ -42,6 +42,7 @@ string Json(string body);
 
 class HttpSession : public enable_shared_from_this<HttpSession>
 {
+
     beast::tcp_stream stream;
     beast::flat_buffer buffer;
     shared_ptr<string const> root;
@@ -50,7 +51,7 @@ class HttpSession : public enable_shared_from_this<HttpSession>
 public:
     HttpSession(tcp::socket&& socket, std::shared_ptr<std::string const> const& doc_root) : stream(std::move(socket)), root(doc_root)
     {
-
+        cout << 12121 << endl;
     }
     //Log logsWorkerM;
     void Run();

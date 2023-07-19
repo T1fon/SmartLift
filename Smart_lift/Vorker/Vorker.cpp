@@ -188,11 +188,13 @@ void fail(beast::error_code ErrCode, char const* what)
 
 void HttpSession::Run()
 {
+    cout << 1 << endl;
 	net::dispatch(stream.get_executor(), beast::bind_front_handler(&HttpSession::DoRead, shared_from_this()));
 }
 
 void HttpSession::DoRead()
 {
+    cout << 2 << endl;
 	request = {};
 	stream.expires_after(chrono::seconds(30));
 	http::async_read(stream, buffer, request, beast::bind_front_handler(&HttpSession::OnRead, shared_from_this()));

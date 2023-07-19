@@ -1,4 +1,4 @@
-/*#include "Client.hpp"
+#include "Client.hpp"
 
 void failClient(beast::error_code ec, char const* what)
 {
@@ -48,4 +48,4 @@ void Client::onRead(boost::system::error_code ec, std::size_t bytes_transferred)
 	{
 		return failClient(ec, "shutdown");
 	}
-}*/
+}

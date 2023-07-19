@@ -1,4 +1,4 @@
-/*#include <boost/asio/dispatch.hpp>
+#include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/config.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -31,7 +31,7 @@ class Client : public boost::enable_shared_from_this<Client>, boost::noncopyable
 	tcp::socket __socket;
 	bool __started;
 	string __host = "127.0.0.1";
-	const char* __port = "8001";
+	const char* __port = "1234";
 
 public:
 	explicit Client(net::io_context& ioc, string message) :__socket(ioc), __message(message), __started(true)
@@ -45,4 +45,4 @@ public:
 
 
 	
-};*/
+};

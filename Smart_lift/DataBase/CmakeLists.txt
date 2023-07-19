@@ -33,7 +33,7 @@ set(MOD_Client "${MODULES}/Client/Client.hpp" "${MODULES}/Client/Client.cpp")
 set(MOD_Libraries "${MODULES}/Libraries/shell.c" "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
 set(SOURCE_LIBRARY ${MOD_Libraries})
 set(SOURCE_MODULES ${MOD_Client})
-add_executable (DataBaseServer "DataBaseServer.cpp" "DataBaseServer.hpp"   ${MOD_Client} ${MOD_Libraries})
+add_executable (DataBaseServer "DataBaseServer.cpp" "DataBaseServer.hpp" ${MOD_Client} ${MOD_Libraries})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)

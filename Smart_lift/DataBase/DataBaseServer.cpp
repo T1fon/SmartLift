@@ -1,159 +1,154 @@
-#include "Modules/Libraries/sqlite3.h"
-#include "Modules/Libraries/sqlite3ext.h"
 #include "DataBaseServer.hpp"
-/*
 #include "Modules/Client/Client.hpp"
-
-#include <boost/asio/dispatch.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/config.hpp>
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/beast.hpp>
-#include <boost/asio/socket_base.hpp>
-#include <boost/asio/read.hpp>
-#include <algorithm>
-#include <cstdlib>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
-
-using namespace std;
-namespace beast = boost::beast;
-namespace http = beast::http;
-namespace net = boost::asio;
-using tcp = boost::asio::ip::tcp;
 
 void fail(beast::error_code ErrCode, char const* what)
 {
-	cerr << what << ": " << ErrCode.message() << endl;
+	cerr << what << ": " << ErrCode.message() << "  " << endl;
 }
 
-
-void DataBaseServer::Run()
+DataBaseSession::DataBaseSession(tcp::socket&& socket, std::shared_ptr<std::string const> const& doc_root): __socket(std::move(socket)), __root(doc_root)
 {
-	cout << "Server is working" << endl;
-	net::dispatch(socket.get_executor(),boost::bind(&DataBaseServer::DoRead, shared_from_this()));
-	if (socket.is_open())
-	{
-		cout << "open" << endl;
-	}
-	else
-	{
-		cout << "error" << endl;
-	}
-	
+	cout << 1 << endl;
+
 }
 
-void DataBaseServer::DoRead()
+tcp::socket& DataBaseSession::socket()
 {
-	message.clear();
-		if (socket.is_open())
-	{
-		cout << "open" << endl;
-	}
-	else
-	{
-		cout << "error" << endl;
-	}
-	net::async_read(socket, net::buffer(message), boost::bind(&DataBaseServer::OnRead, this, boost::placeholders::_1, boost::placeholders::_2));
+	cout << 2 << endl;
+	return __socket;
 }
 
-void DataBaseServer::OnRead(beast::error_code errorCode, size_t bytesTransferred)
+void DataBaseSession::start()
 {
-	boost::ignore_unused(bytesTransferred);
-	if (errorCode == http::error::end_of_stream)
+	cout << 3 << endl;
+	cout << "server Working" << endl;
+	//doRead();
+	net::dispatch(__socket.get_executor(), boost::bind(&DataBaseSession::doRead, shared_from_this()));
+}
+
+void DataBaseSession::doRead()
+{
+	cout << 4 << endl;
+	__readBoof.clear();
+	net::async_read(__socket, net::buffer(__readBoof, __boofLength), boost::bind(&DataBaseSession::onRead, shared_from_this(), net::placeholders::error));
+}
+
+void DataBaseSession::onRead(const boost::system::error_code& error)
+{
+	cout << 5 << endl;
+	if (error)
 	{
-		return DoClose();
+		//close();
+		return fail(error, "ReadServer");
 	}
+	__writeBoof.clear();
+	__writeBoof = "hui";
+	net::async_write(__socket, net::buffer(__writeBoof, __writeBoof.length()), boost::bind(&DataBaseSession::onWrite, shared_from_this(), net::placeholders::error));
+}
+
+void DataBaseSession::onWrite(const::boost::system::error_code& error)
+{
+	cout << 6 << endl;
+	if (error)
+	{
+		//close();
+		return fail(error, "write");
+	}
+	doRead();
+	//close();
+}
+
+void DataBaseSession::close()
+{
+	cout << 7 << endl;
+	boost::system::error_code error;
+	__socket.shutdown(tcp::socket::shutdown_send, error);
+}
+
+Listener::Listener(net::io_context& Ioc, tcp::endpoint endpoint, std::shared_ptr<std::string const> const& doc_root)
+	: ioc(Ioc)
+	, acceptor(net::make_strand(Ioc))
+	, doocRoot(doc_root)
+{
+	cout << 01 << endl;
+	boost::system::error_code errorCode;
+	acceptor.open(endpoint.protocol(), errorCode);
 	if (errorCode)
 	{
-		return fail(errorCode, "readServer");
+		fail(errorCode, "open");
+		return;
 	}
 
-	SendResponse(message);
-}
-
-void DataBaseServer::SendResponse(string message)
-{
-	message = "hui";
-	net::async_write(socket, net::buffer(message, message.size()), boost::bind(&DataBaseServer::OnWrite, this, boost::placeholders::_1, boost::placeholders::_2));
-}
-
-void DataBaseServer::OnWrite(beast::error_code errorCode, size_t bytesTransferred)
-{
+	acceptor.set_option(net::socket_base::reuse_address(true), errorCode);
 	if (errorCode)
 	{
-		return fail(errorCode, "write");
+		fail(errorCode, "set_option");
+		return;
 	}
-	DoRead();
-}
 
-void DataBaseServer::DoClose()
-{
-	beast::error_code errorCode;
-	socket.shutdown(tcp::socket::shutdown_send, errorCode);
-}
-void Listener::Run()
-{
-
-	__DoAccept();
-}
-void Listener::__DoAccept()
-{
-	acceptor.async_accept(net::make_strand(ioc), beast::bind_front_handler(&Listener::__OnAccept, shared_from_this()));
-}
-
-void Listener::__OnAccept(beast::error_code errorCode, tcp::socket socket)
-{
+	acceptor.bind(endpoint, errorCode);
 	if (errorCode)
 	{
-		fail(errorCode, "accept");
+		fail(errorCode, "bind");
+		return;
+	}
+
+	acceptor.listen(net::socket_base::max_listen_connections, errorCode);
+
+	if (errorCode)
+	{
+		fail(errorCode, "listen");
+		return;
+	}
+}
+
+void Listener::run()
+{
+	cout << 02 << endl;
+	__doAccept();
+}
+
+void Listener::__doAccept()
+{
+	cout << 03 << endl;
+	acceptor.async_accept(net::make_strand(ioc), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
+}
+
+void Listener::__onAccept(const boost::system::error_code& error, tcp::socket socket)
+{
+	cout << 04 << endl;
+	if (error)
+	{
+		fail(error, "accept");
 		return;
 	}
 	else
 	{
-		make_shared<DataBaseServer>(move(socket), doocRoot)->Run();
+		make_shared<DataBaseSession>(move(socket), doocRoot)->start();
 	}
-	__DoAccept();
+	cout << 01010 << endl;
+	__doAccept();
 }
 
-int main(int argc, char* argv[])
+
+int main()
 {
 	setlocale(LC_ALL, ".ACP");
-
 	try
 	{
-
-		/*if (argc != 4)
-		{
-			std::cerr << "Usage: " << argv[0] << " <address> <port> <threads>\n";
-			std::cerr << "  For IPv4, try:\n";
-			std::cerr << "    receiver 0.0.0.0 80 1\n";
-			std::cerr << "  For IPv6, try:\n";
-			std::cerr << "    receiver 0::0 80 1\n";
-			return EXIT_FAILURE;
-		}
-		auto const address = net::ip::make_address(argv[1]);
-		unsigned short port = static_cast<unsigned short>(std::atoi(argv[2]));
-		auto const threads = max<int>(1, atoi(argv[3]));
-
 		string add = "0.0.0.0";
 		string p = "80";
 		const char* addr = "127.0.0.1";
-		const char* por = "8001";
+		const char* por = "80";
 		string doocRoot = ".";
 		auto const address = net::ip::make_address(add);
-		//auto const address = tcp::v4();
-		auto const port = static_cast<unsigned short>(atoi("8001"));
+		auto const port = static_cast<unsigned short>(atoi("1234"));
 		auto const docRoot = make_shared<string>(doocRoot);
 		auto const threads = max<int>(1, 2);
-		net::io_context ioc{threads};
-		make_shared<Listener>(ioc, tcp::endpoint{address, port}, docRoot)->Run();
-		cout << 4 << endl;
+		net::io_context ioc{1};
+		string CM = "asasa";
+
+		make_shared<Listener>(ioc, tcp::endpoint{address, port}, docRoot)->run();
 		vector<thread> v;
 		v.reserve(threads - 1);
 		for (auto i = threads - 1; i > 0; i--)
@@ -161,26 +156,14 @@ int main(int argc, char* argv[])
 			v.emplace_back([&ioc]
 				{
 					ioc.run();
-					cout << "1" << endl;
 				}
 			);
 		}
-		string message = "hellow";
-		cout << 5 << endl;
-		make_shared<Client>(ioc, message)->RunClient();
-
-		cout << 6 << endl;
+		make_shared<Client>(ioc, CM)->RunClient();
 		ioc.run();
-		cout << "7" << endl;
 	}
-	catch (std::exception const& e)
+	catch(exception& e)
 	{
-		std::cerr << "Error: " << e.what() << std::endl;
-		return EXIT_FAILURE;
+		cerr << "Exception " << e.what() << endl;
 	}
-}*/
-
-int main()
-{
-	cout << "Hi" << endl;
 }
