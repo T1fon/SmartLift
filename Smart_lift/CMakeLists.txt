@@ -30,10 +30,11 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
+set(MOD_CONFIG "./GlobalModules/Config/Config.cpp" "./GlobalModules/Config/Config.hpp")
+set(MOD_LOG "./GlobalModules/Log/Log.cpp" "./GlobalModules/Log/Log.hpp")
+set(MODULES_GLOBAL ${MOD_CONFIG} ${MOD_LOG})
 
-set(SOURCE_MODULES ${MOD_MQTT_Broker})
-
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" ${SOURCE_MODULES})
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" ${MODULES_GLOBAL})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
