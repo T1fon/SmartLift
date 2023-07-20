@@ -1,5 +1,7 @@
 //(*end_p).publish("LU127728/set/cmd", std::string("{\"cmdlft\":[1,") + std::to_string(a.at(i)) + std::string("]}"));
 #include "MQTTWorker.hpp"
+using namespace std;
+
 MQTTWorker::MQTTWorker() {
 
 }
@@ -19,14 +21,18 @@ void MQTTWorker::init() {
     ));
     __mqtt_broker.setServer(__mqtt_server);
     __mqtt_broker.init();
+    __ms_worker = make_shared<MSWorker>("127.0.0.1", "1337", "1", __io_ctx);
 }
 void MQTTWorker::start() {
-    __mqtt_broker.start();
+    //__mqtt_broker.start();
+    
+    
+    __ms_worker->start();
 
     //добавим позже потоки
 
     __io_ctx.run();
 }
 void MQTTWorker::stop() {
-    __mqtt_broker.stop();
+    //__mqtt_broker.stop();
 }

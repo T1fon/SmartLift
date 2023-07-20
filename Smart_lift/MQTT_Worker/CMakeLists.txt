@@ -10,7 +10,7 @@ else()
 
 	set(MQTT_PATH "C:/Vato/My_Programs/LKDS/MQTT_cpp/source/include")
 	set(MODULES "Modules")
-	set(GLOBAL_MODULES "C:/Vato/My_Programs/LKDS/Smart_Lift/Smart_lift/GlobalModules")
+	set(GLOBAL_MODULES "../GlobalModules")
 	set(CMAKE_CXX_FLAGS "/bigobj /EHsc")
 endif()
 
@@ -61,7 +61,12 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_link_libraries(MQTT_Worker PUBLIC OpenSSL::Crypto)
 	
 	add_library(mqtt_cpp_iface INTERFACE)
+
 	
+	#add_directory(${GLOBAL_MODULES})
+	#add_subdirectory(${MODULES})
+	target_include_directories(MQTT_Worker PUBLIC ${GLOBAL_MODULES})
+	target_include_directories(MQTT_Worker PUBLIC ${MODULES})
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
 	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")

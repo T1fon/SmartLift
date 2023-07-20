@@ -4,9 +4,6 @@
 #include <map>
 #include <boost/json.hpp>
 
-using namespace boost;
-using namespace std;
-
 namespace json_formatter{
 
 	enum ERROR_CODE {
@@ -20,29 +17,29 @@ namespace json_formatter{
 	namespace worker {
 		namespace request {
 			/*ОБЩИЕ*/
-			json::object ping(string sender);
-			json::object connect(string sender, string id);
-			json::object disconnect(string sender);
+			boost::json::object ping(std::string sender);
+			boost::json::object connect(std::string sender, std::string id);
+			boost::json::object disconnect(std::string sender);
 
 			/*ГС*/
-			json::object marussia_request(string sender, string station_id, json::value body);
-			json::object mqtt_move(string sender, string station_id, string lift_block_id, int floor);
+			boost::json::object marussia_request(std::string sender, std::string station_id, boost::json::value body);
+			boost::json::object mqtt_move(std::string sender, std::string station_id, std::string lift_block_id, int floor);
 		}
 		namespace response {
 			/*ОБЩИЕ*/
-			json::object ping(string sender);
+			boost::json::object ping(std::string sender);
 			//ответит success
-			json::object connect(string sender);
-			json::object disconnect(string sender);
+			boost::json::object connect(std::string sender);
+			boost::json::object disconnect(std::string sender);
 			//ответит с кодом ошибки
-			json::object connect(string sender, ERROR_CODE err_code, string err_message = "");
-			json::object disconnect(string sender, ERROR_CODE err_code, string err_message = "");
+			boost::json::object connect(std::string sender, ERROR_CODE err_code, std::string err_message = "");
+			boost::json::object disconnect(std::string sender, ERROR_CODE err_code, std::string err_message = "");
 
 			/*marussia worker*/
-			json::object marussia_static_message(string sender, string station_id, json::object response_body);
-			json::object marussia_mqtt_message(string sender, string station_id, json::object response_body, string lift_block_id, int floor);
+			boost::json::object marussia_static_message(std::string sender, std::string station_id, boost::json::object response_body);
+			boost::json::object marussia_mqtt_message(std::string sender, std::string station_id, boost::json::object response_body, std::string lift_block_id, int floor);
 			/*mqtt worker*/
-			json::object mqtt_lift_move(string sender, string station_id, STATUS_OPERATION status, string err_message = "");
+			boost::json::object mqtt_lift_move(std::string sender, std::string station_id, STATUS_OPERATION status, std::string err_message = "");
 		}
 		
 	}
@@ -51,20 +48,20 @@ namespace json_formatter{
 			SELECT = 1
 		};
 		namespace request {
-			json::object ping(string sender);
-			json::object connect(string sender, string login, string password);
-			json::object disconnect(string sender);
-			json::object query(string sender, QUERY_METHOD method, vector<string> fields, string query);
+			boost::json::object ping(std::string sender);
+			boost::json::object connect(std::string sender, std::string login, std::string password);
+			boost::json::object disconnect(std::string sender);
+			boost::json::object query(std::string sender, QUERY_METHOD method, std::vector<std::string> fields, std::string query);
 		}
 		namespace response {
-			json::object ping(string sender);
+			boost::json::object ping(std::string sender);
 			//ответит success
-			json::object connect(string sender);
-			json::object disconnect(string sender);
+			boost::json::object connect(std::string sender);
+			boost::json::object disconnect(std::string sender);
 			//ответит с кодом ошибки
-			json::object connect(string sender, ERROR_CODE err_code, string err_message = "");
-			json::object disconnect(string sender, ERROR_CODE err_code, string err_message = "");
-			json::object query(string sender, QUERY_METHOD method, map< string, vector<string> > fields);
+			boost::json::object connect(std::string sender, ERROR_CODE err_code, std::string err_message = "");
+			boost::json::object disconnect(std::string sender, ERROR_CODE err_code, std::string err_message = "");
+			boost::json::object query(std::string sender, QUERY_METHOD method, std::map< std::string, std::vector<std::string> > fields);
 		}
 	}
 }

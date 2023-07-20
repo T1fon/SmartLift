@@ -10,6 +10,7 @@ else()
 
 	set(MQTT_PATH "C:/Vato/My_Programs/LKDS/MQTT_cpp/source/include")
 	set(MODULES "Modules")
+	set(GLOBAL_MODULES "../GlobalModules")
 endif()
 
 set(Boost_NO_SYSTEM_PATHS		 ON)
@@ -24,12 +25,14 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
+set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
+set(MOD_Server "${MODULES}/WorkerServer/WorkerServer.hpp" "${MODULES}/WorkerServer/WorkerServer.cpp")
 set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
 set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
 set(MOD_MQTT_Broker "${MODULES}/MQTTBroker/MQTTBroker.hpp" "${MODULES}/MQTTBroker/MQTTBroker.cpp")
-set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_HTTPS_Server} ${MOD_Sertificate})
+set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter})
 
-add_executable (MainServer "MainServer.cpp" ${SOURCE_MODULES})
+add_executable (MainServer "main.cpp" "MainServer.cpp" "MainServer.hpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -54,8 +57,6 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_link_libraries(MainServer PUBLIC Boost::json)
 	target_link_libraries(MainServer PUBLIC OpenSSL::SSL)
 	target_link_libraries(MainServer PUBLIC OpenSSL::Crypto)
-	
-	
 	
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
