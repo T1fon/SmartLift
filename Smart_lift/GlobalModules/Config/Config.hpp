@@ -1,3 +1,4 @@
+#pragma once
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -17,21 +18,24 @@ using namespace std;
 #define CONFIG_FILE "config.txt"
 #define NOT_FOUND_CONFIG_FILE 1
 
-
 class Config : public enable_shared_from_this<Config>
 {
 public:
-    Config(shared_ptr<Log> lg, string boofWay);
-    map<string, string>getConfigInfo();
-    void writeError(int error);
+    Config(shared_ptr<Log> lg, string root_directory, string way, string file_name = CONFIG_FILE);
+    
+    map<string, string>getConfigInfo();    
     void readConfig();
     void setLog(shared_ptr<Log> lg);
-    void setWay(string boof);
+    void setWay(string way);
+    void setRootDirectory(string root_directory);
+    void setFileName(string file_name);
 private:
-    string __conf = CONFIG_FILE;
-    string __boofWay;
-    string __way = "..\\..\\..\\..\\..\\Smart_lift\\";
-    shared_ptr<Log> __logConfig;
-    map<string, string> __configInfo;
-
+    
+    string __root_directory;
+    string __way;
+    string __file_name;
+    string __final_path;
+    shared_ptr<Log> __log_ñonfig;
+    map<string, string> __config_info;
+    void __writeError(int error);
 };

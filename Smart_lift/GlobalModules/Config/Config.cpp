@@ -1,15 +1,18 @@
 #include "Config.hpp"
 
 
-Config::Config(shared_ptr<Log> lg, string boofWay)
+Config::Config(shared_ptr<Log> lg, string root_directory, string way, string file_name)
 {
 	setLog(lg);
-	setWay(boofWay);//указать путь относительно папки Smart_lift(DataBase\\Modules\\)файл config указывать не нужно
-	__way = __way + __boofWay + __conf;
-	ifstream fin(__way);
+
+	__root_directory = root_directory;
+	__way = way;
+	__file_name = file_name;
+	__final_path = __way + __root_directory + __file_name;
+	ifstream fin(__final_path);
 	if (!fin.is_open())
 	{
-		writeError(NOT_FOUND_CONFIG_FILE);
+		__writeError(NOT_FOUND_CONFIG_FILE);
 	}
 	else
 	{
@@ -19,22 +22,30 @@ Config::Config(shared_ptr<Log> lg, string boofWay)
 
 void Config::setLog(shared_ptr<Log> lg)
 {
-	__logConfig = lg;
+	__log_сonfig = lg;
 }
 
-void Config::setWay(string boof)
+void Config::setWay(string way)
 {
-	__boofWay = boof;
+	__way = way;
+	__final_path = __way + __root_directory + __file_name;
 }
-
-void Config::writeError(int error)
+void Config::setRootDirectory(string root_directory) {
+	__root_directory = root_directory;
+	__final_path = __way + __root_directory + __file_name;
+}
+void Config::setFileName(string file_name) {
+	__file_name = file_name;
+	__final_path = __way + __root_directory + __file_name;
+}
+void Config::__writeError(int error)
 {
-	__logConfig->writeLog(error, "Config", "open config");
+	__log_сonfig->writeLog(error, "Config", "open config");
 }
 
 void Config::readConfig()
 {
-	ifstream fin(__way);
+	ifstream fin(__final_path);
 	if (fin.is_open())
 	{
 		map <string, string> config;
@@ -47,18 +58,17 @@ void Config::readConfig()
 			key.append(boof, 0, border);
 			boof.erase(0, border + 1);
 			config.insert(pair<string, string>(key, boof));
-
 		}
-		__logConfig->writeLog(0, "config", "Write Config");
-		__configInfo = config;
+		__log_сonfig->writeLog(0, "config", "Write Config");
+		__config_info = config;
 	}
 	else
 	{
-		writeError(NOT_FOUND_CONFIG_FILE);
+		__writeError(NOT_FOUND_CONFIG_FILE);
 		return;
 	}
 }
 map<string, string> Config::getConfigInfo()
 {
-	return __configInfo;
+	return __config_info;
 }
