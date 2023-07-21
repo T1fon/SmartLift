@@ -4,7 +4,7 @@ Log::Log(string way, string rootDirectory, string nameClass)
 {
 	__rootDirectory = rootDirectory;
 	__nameFile = nameClass;
-	__way = way
+	__way = way;
 	__date = getDate();
 	__numFile = 1;
 	setFinalPath();
