@@ -19,7 +19,9 @@
 #include <fstream>
 
 #include "Modules/ClientMtW/Client.hpp"
+#include "../DataBase/Modules/Libraries/sqlite3.h"
 
+#define DB_FILE_WAY "..\\..\\..\\..\\..\\Smart_lift\\DataBaseFile\\SmartLiftBase.db"
 
 using namespace std;
 namespace beast = boost::beast;
@@ -64,9 +66,18 @@ public:
     //void getConfig();
     //void configData();
     //void setLogs();
+    void chooseResponce();
+    bool checkConnect();
+    void readJson();
+    void writeJson();
+    static int callback(void* NotUsed, int argc, char** argv, char** azColName);
 
 private:
     //map<string, string> __config;
+    boost::property_tree::ptree __root;
+    sqlite3* __dB;
+    string __query;
+    static string __reqRes;
 };
 
 class Listener : public enable_shared_from_this<Listener>

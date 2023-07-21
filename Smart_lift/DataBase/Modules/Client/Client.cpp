@@ -5,47 +5,39 @@ void failClient(beast::error_code ec, char const* what)
 	cerr << what << ": " << ec.message() << endl;
 }
 
-void Client::RunClient()
+Client::Client(net::io_context& ioc, tcp::resolver::iterator EndPointIter, string message) : __ioc(ioc), __socket(ioc), __writeMessage(message)
 {
-	auto const address = net::ip::make_address(__host);
-	auto const port = static_cast<unsigned short>(atoi(__port));
-	cout << address << " " << port << endl;
-	tcp::endpoint eP(address, port);
-	//tcp::resolver::query q(__host, __port);
-	__socket.async_connect(eP, boost::bind(&Client::OnConnect, this, boost::placeholders::_1));
-	//net::async_connect(__socket, eP, boost::bind(&Client::OnConnect, this, boost::placeholders::_1));
-
-}
-void Client::OnConnect(boost::system::error_code ec)
-{
-	if (ec)
-	{
-		cout <<ec << endl;
-		return failClient(ec, "ClientConnect");
-	}
-	__socket.async_write_some(net::buffer(__message, __message.size()), boost::bind(&Client::OnWrite, this, boost::placeholders::_1, boost::placeholders::_2));
+	tcp::endpoint eP = *EndPointIter;
+	__socket.async_connect(eP, boost::bind(&Client::__onConnect, this, net::placeholders::error));
 }
 
-void Client::OnWrite(boost::system::error_code ec, std::size_t bytes_transferred)
+void Client::__onConnect(const boost::system::error_code& ErrorCode)
 {
-	boost::ignore_unused(bytes_transferred);
-	if (ec)
+	if (ErrorCode)
 	{
-		return failClient(ec, "write");
+		return failClient(ErrorCode, "ConnectClient");
 	}
-	net::async_read(__socket, net::buffer(__message), boost::bind(&Client::onRead, this, boost::placeholders::_1, boost::placeholders::_2));
+	__socket.async_write_some(net::buffer(__writeMessage, __writeMessage.length()), boost::bind(&Client::__onReceive, this, net::placeholders::error));
 }
-void Client::onRead(boost::system::error_code ec, std::size_t bytes_transferred)
+
+void Client::__onReceive(const boost::system::error_code& ErrorCode)
 {
-	boost::ignore_unused(bytes_transferred);
-	if (ec)
+	if (ErrorCode)
 	{
-		return failClient(ec, "read");
+		return failClient(ErrorCode, "writeClient");
 	}
-	cout << __message << endl;
-	__socket.shutdown(tcp::socket::shutdown_both, ec);
-	if (ec && ec != beast::errc::not_connected)
+	__socket.async_read_some(net::buffer(__message, __bufLen), boost::bind(&Client::__onSend, this, net::placeholders::error));
+}
+void Client::__onSend(const boost::system::error_code& ErrorCode)
+{
+	if (ErrorCode)
 	{
-		return failClient(ec, "shutdown");
+		return failClient(ErrorCode, "readClient");
 	}
+	__doClose();
+}
+
+void Client::__doClose()
+{
+	__socket.close();
 }

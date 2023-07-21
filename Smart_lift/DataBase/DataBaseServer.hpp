@@ -1,14 +1,12 @@
-#include "Modules/Libraries/sqlite3.h"
+#pragma once
 
-#include <boost/asio/dispatch.hpp>
-#include <boost/asio/strand.hpp>
+#include "Modules/Libraries/sqlite3.h"
+#include <boost/asio.hpp>
+#include <boost/json.hpp>
 #include <boost/config.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/beast.hpp>
-#include <boost/asio/socket_base.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/placeholders.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -30,36 +28,29 @@ using tcp = boost::asio::ip::tcp;
 
 void fail(beast::error_code ErrCode, char const* what);
 
-
-class DataBaseSession : public boost::enable_shared_from_this<DataBaseSession>
+class DataBase : public enable_shared_from_this<DataBase>
 {
+private:
+	const string __Name = "DataBse";
+	string __id = "0";
+	shared_ptr<tcp::endpoint>__endPoint;
+	shared_ptr<tcp::socket>__socket;
+
+	static const int BUF_SIZE = 2048;
+	string __bufSend;
+	char* __bufRecieve;
+	boost::json::value __bufJsonRecieve;
+	boost::json::stream_parser __parser;
+
+	void __reqAutentification(const boost::system::error_code &eC);
+	void __resAutentification(const boost::system::error_code& eC, size_t bytesSend);
+	void __connectAnalize(const boost::system::error_code& eC, size_t bytesRecieve);
+
+	void __waitCommand(const boost::system::error_code& eC, size_t bytesRecieve);
 public:
-	DataBaseSession(tcp::socket&& socket, std::shared_ptr<std::string const> const& doc_root);
-	tcp::socket& socket();
+	DataBase(string ip, string port, string idBase, net::io_context& ioc);
 	void start();
-	//void doRead(const boost::system::error_code& error);
-	void doRead();
-	void onRead(const boost::system::error_code& error);
-	void onWrite(const::boost::system::error_code& error);
-	void close();
-private:
-	tcp::socket __socket;
-	string __readBoof;
-	string __writeBoof;
-	int __boofLength = 2048;
-	shared_ptr<string const> __root;
+	void stop();
+	~DataBase();
+	
 };
-
-class Listener : public enable_shared_from_this<Listener>
-{
-public:
-	Listener(net::io_context& Ioc, tcp::endpoint endpoint, std::shared_ptr<std::string const> const& doc_root);
-	net::io_context& ioc;
-	tcp::acceptor acceptor;
-	shared_ptr<string const> doocRoot;
-	void run();
-private:
-	void __doAccept();
-	void __onAccept(const boost::system::error_code& error, tcp::socket socket);
-};
-

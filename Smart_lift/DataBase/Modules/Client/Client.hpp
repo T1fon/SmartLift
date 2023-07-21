@@ -25,24 +25,21 @@ using tcp = boost::asio::ip::tcp;
 
 void failClient(beast::error_code ec, char const* what);
 
-class Client : public boost::enable_shared_from_this<Client>, boost::noncopyable
+class Client
 {
-	string __message;
-	tcp::socket __socket;
-	bool __started;
-	string __host = "127.0.0.1";
-	const char* __port = "1234";
-
 public:
-	explicit Client(net::io_context& ioc, string message) :__socket(ioc), __message(message), __started(true)
-	{
+    Client(net::io_context& ioc, tcp::resolver::iterator EndPointIter, string message);
 
-	}
-	void RunClient();
-	void OnConnect(boost::system::error_code ec);
-	void OnWrite(boost::system::error_code ec, std::size_t bytes_transferred);
-	void onRead(boost::system::error_code ec, std::size_t bytes_transferred);
+private:
+   net::io_context& __ioc;
+    tcp::socket __socket;
 
+    string __message;
+    static const size_t __bufLen = 1024;
+    string __writeMessage;
 
-	
+    void __onConnect(const boost::system::error_code& ErrorCode);
+    void __onReceive(const boost::system::error_code& ErrorCode);
+    void __onSend(const boost::system::error_code& ErrorCode);
+    void __doClose();
 };

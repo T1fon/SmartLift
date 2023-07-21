@@ -212,8 +212,93 @@ void HttpSession::OnRead(beast::error_code errorCode, size_t bytesTransferred)
         cout << request << endl;
 		return fail(errorCode, "readServer");
 	}
-
+    //chooseResponce();
 	SendResponse(HandleReq(*root, std::move(request)));
+}
+
+void HttpSession::chooseResponce()
+{
+    readJson();
+    string target = __root.get<string>("target");
+    if(target == "connect")
+
+    {
+        bool flag = checkConnect();
+        if (flag)
+        {
+            //цспешный коннект
+        }
+        else
+        {
+            //ошибка нет коннекта
+        }
+    }
+    else if (target == "DB_query")
+    {
+        string method = __root.get<string>("method");
+        string fields = __root.get<string>("field");
+        __query.clear();
+        __query = __root.get<string>("query");
+        int boof = sqlite3_exec(__dB, __query.c_str(), HttpSession::callback, NULL, NULL);
+        if (boof == 0)
+        {
+            //ошибка нет данных
+        }
+        else
+        {
+            if (method == "select")
+            {
+                //c
+            }
+        }
+    }
+    else if (target == "disconnect")
+    {
+
+    }
+}
+
+bool HttpSession::checkConnect()
+{
+    string login = __root.get<string>("login");
+    string password = __root.get<string>("password");
+    int exit = sqlite3_open(DB_FILE_WAY, &__dB);
+    __query.clear();
+    __query = "SELECT FROM Accounts WHERE Login = " + login;
+    int boof = sqlite3_exec(__dB, __query.c_str(),HttpSession::callback, NULL, NULL);
+    if (boof == 0)
+    {
+        return false;
+    }
+    else
+    {
+        if (password == __reqRes)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
+int HttpSession::callback(void* NotUsed, int argc, char** argv, char** azColName)
+{
+    if (argc == 0)
+    {
+        return 0;
+    }
+    __reqRes.clear();
+    __reqRes = argv[0];
+    return 1;
+}
+
+void HttpSession::readJson()
+{
+    string body = request.body();
+    stringstream encoded(body);
+    boost::property_tree::read_json(encoded, __root);
 }
 
 void HttpSession::SendResponse(http::message_generator&& message)
