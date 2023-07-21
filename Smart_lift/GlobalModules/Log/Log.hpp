@@ -29,7 +29,7 @@ private:
     int __numFile;
     int __numMassive;
     string __temporaryLog[3];
-    string __way = ;
+    string __way;
     string __bufWay;
     string __rootDirectory;
 
