@@ -1,25 +1,16 @@
 #include "Log.hpp"
 
-Log::Log(string bufWay, string name) : __bufWay(bufWay), __nameFile(name)
+Log::Log(string way, string rootDirectory, string nameClass)
 {
-	setBufWay(bufWay);//указать отностительный путь в папку записи логов опуская Smart_lift(DataBase\\Log\\)
-	setNameFile(name);//указать название программы(Database)
-	__way = __way + bufWay;
+	__rootDirectory = rootDirectory;
+	__nameFile = nameClass;
+	__way = way
 	__date = getDate();
 	__numFile = 1;
-	__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+	setFinalPath();
 	__numMassive = 2;
 }
 
-void Log::setBufWay(string boof)
-{
-	__bufWay = boof;
-}
-
-void Log::setNameFile(string boof)
-{
-	__nameFile = boof;
-}
 
 
 void Log::writeLog(int error, string clas, string message)
@@ -27,15 +18,7 @@ void Log::writeLog(int error, string clas, string message)
 	bool flagFile = checkFile();
 	if (flagFile == false)
 	{
-		ofstream ost(__nameLogFile, ios::app);
-		string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
-		if (error != 0)
-		{
-			buffLog = buffLog + "_" + to_string(error);
-		}
-		buffLog = buffLog + "\n";
-		ost << buffLog;
-		ost.close();
+		writeLogToFile(clas, message);
 	}
 	else
 	{
@@ -46,35 +29,40 @@ void Log::writeLog(int error, string clas, string message)
 			if (__date == buffDate)
 			{
 				__numFile++;
-				__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+				setFinalPath();
 			}
 			else
 			{
 				__date = buffDate;
 				__numFile = 1;
-				__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+				setFinalPath();
 			}
 		}
 		else if (buffDate != __date)
 		{
 			__date = buffDate;
 			__numFile = 1;
-			__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+			setFinalPath();
 		}
 		else
 		{
-			__nameLogFile = __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+			setFinalPath();
 		}
-		ofstream ost(__nameLogFile, ios::app);
-		string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
-		if (error != 0)
-		{
-			buffLog = buffLog + "_" + to_string(error);
-		}
-		buffLog = buffLog + "\n";
-		ost << buffLog;
-		ost.close();
+		writeLogToFile(clas, message);
 	}
+}
+
+void Log::writeLogToFile(string clas, string message)
+{
+	ofstream ost(__finalPath, ios::app);
+	string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
+	if (error != 0)
+	{
+		buffLog = buffLog + "_" + to_string(error);
+	}
+	buffLog = buffLog + "\n";
+	ost << buffLog;
+	ost.close();
 }
 
 string Log::getDate()
@@ -91,7 +79,7 @@ string Log::getDate()
 
 bool Log::checkFile()
 {
-	ifstream fin(__nameLogFile);
+	ifstream fin(__finalPath);
 	if (fin.is_open())
 	{
 		return true;
@@ -105,12 +93,17 @@ bool Log::checkFile()
 
 streamsize Log::getFileSize()
 {
-	fstream file(__nameLogFile, fstream::in);
+	fstream file(__finalPath, fstream::in);
 	file.seekg(0, ios::end);
 	streamsize fileSize = file.tellg();
 	file.close();
 	return fileSize;
 
+}
+
+void Log::setFinalPath()
+{
+	__finalPath = __rootDirectory + __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
 }
 
 void Log::writeTempLog(int error, string clas, string message)
