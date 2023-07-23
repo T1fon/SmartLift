@@ -18,7 +18,7 @@ void Log::writeLog(int error, string clas, string message)
 	bool flagFile = checkFile();
 	if (flagFile == false)
 	{
-		writeLogToFile(clas, message);
+		writeLogToFile(clas, message, error);
 	}
 	else
 	{
