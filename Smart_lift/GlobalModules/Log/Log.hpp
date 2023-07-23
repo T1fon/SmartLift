@@ -21,7 +21,7 @@ public:
     bool checkFile();
     streamsize getFileSize();
     void setFinalPath();
-    void writeLogToFile(string clas, string message);
+    void writeLogToFile(string clas, string message, int error);
 private:
     string __nameFile;
     string __finalPath;
