@@ -48,11 +48,11 @@ void Log::writeLog(int error, string clas, string message)
 		{
 			setFinalPath();
 		}
-		writeLogToFile(clas, message);
+		writeLogToFile(clas, message, error);
 	}
 }
 
-void Log::writeLogToFile(string clas, string message)
+void Log::writeLogToFile(string clas, string message, int error)
 {
 	ofstream ost(__finalPath, ios::app);
 	string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
