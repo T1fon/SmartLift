@@ -13,7 +13,7 @@ json::object worker::request::disconnect(std::string sender) {
 }
 json::object worker::request::marussia_request(std::string sender, std::string station_id, json::value body) {
 	return json::object({	{ "sender", sender},
-							{ "target", "Marussia_station_request"}, 
+							{ "target", "marussia_station_request"}, 
 							{ "request", {
 									{"station_id", station_id},
 									{"body", body}
@@ -23,10 +23,10 @@ json::object worker::request::marussia_request(std::string sender, std::string s
 }
 json::object worker::request::mqtt_move(std::string sender, std::string station_id, std::string lift_block_id, int floor) {
 	return json::object({ { "sender", sender},
-							{ "target", "Move_lift"},
+							{ "target", "move_lift"},
 							{ "request", {
 									{"station_id", station_id},
-									{"MQTT_command", {
+									{"mqtt_command", {
 										{"lb_id", lift_block_id},
 										{"value", std::to_string(floor)}
 										}
@@ -37,13 +37,13 @@ json::object worker::request::mqtt_move(std::string sender, std::string station_
 }
 
 json::object worker::response::ping(std::string sender) {
-	return json::object({ {"sender", sender}, {"target", "ping"}, { "response", {"status", "success"}}});
+	return json::object({ {"sender", sender}, {"target", "ping"}, { "response", {{"status", "success"}}} });
 }
 json::object worker::response::connect(std::string sender){
-	return json::object({ {"sender", sender}, {"target", "connect"}, { "response", {"status", "success"}} });
+	return json::object({ {"sender", sender}, {"target", "connect"}, { "response", {{"status", "success"}}} });
 }
 json::object worker::response::disconnect(std::string sender){
-	return json::object({ { "sender", sender}, {"target", "disconnect"}, { "response", {"status", "success"}} });
+	return json::object({ { "sender", sender}, {"target", "disconnect"}, { "response", {{"status", "success"}}} });
 }
 json::object worker::response::connect(std::string sender, ERROR_CODE err_code, std::string err_message){
 	return json::object({	{"sender", sender}, 
@@ -69,7 +69,7 @@ json::object worker::response::disconnect(std::string sender, ERROR_CODE err_cod
 }
 json::object worker::response::marussia_static_message(std::string sender, std::string station_id, json::object response_body){
 	return json::object({	{"sender", sender},
-							{"target", "Static_message"},
+							{"target", "static_message"},
 							{"response", {
 								{"station_id", station_id},
 								{"response_body", response_body}
@@ -79,11 +79,11 @@ json::object worker::response::marussia_static_message(std::string sender, std::
 }
 json::object worker::response::marussia_mqtt_message(std::string sender, std::string station_id, json::object response_body, std::string lift_block_id, int floor){
 	return json::object({ {"sender", sender},
-							{"target", "Move_lift"},
+							{"target", "move_lift"},
 							{"response", {
 								{"station_id", station_id},
 								{"response_body", response_body},
-								{"MQTT_command", {
+								{"mqtt_command", {
 									{"lb_id", lift_block_id},
 									{"value", std::to_string(floor)}
 									}
@@ -97,7 +97,7 @@ json::object worker::response::mqtt_lift_move(std::string sender, std::string st
 	switch (status) {
 	case STATUS_OPERATION::success:
 		return json::object({	{"sender", sender},
-								{"target", "MQTT_message"},
+								{"target", "mqtt_message"},
 								{"response", {
 									{"station_id", station_id},
 									{"status", "success"}
@@ -107,7 +107,7 @@ json::object worker::response::mqtt_lift_move(std::string sender, std::string st
 		break;
 	case STATUS_OPERATION::fail:
 		return json::object({ {"sender", sender},
-								{"target", "MQTT_message"},
+								{"target", "mqtt_message"},
 								{"response", {
 									{"station_id", station_id},
 									{"status", "fail"},
@@ -147,7 +147,7 @@ json::object database::request::query(std::string sender, QUERY_METHOD method, s
 	switch (method) {
 	case SELECT:
 		return json::object({	{"sender", sender},
-								{"target", "DB_query"},
+								{"target", "db_query"},
 								{"request", {
 									{"method", "select"},
 									{"fields", json_fields},
@@ -180,7 +180,7 @@ json::object database::response::query(std::string sender, QUERY_METHOD method, 
 	json::object result;
 	json::object response;
 	result["sender"] = sender;
-	result["target"] = "DB_query";
+	result["target"] = "db_query";
 	switch (method) {
 		case SELECT:
 			response["method"] = "select";

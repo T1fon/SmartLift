@@ -14,7 +14,7 @@ void MainServer::init(unsigned short count_threads) {
 	__count_threads = count_threads;
 	__io_ctx = make_shared<boost::asio::io_context>(count_threads);
 	__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
-	__server_mqtt = make_shared<worker_server::Server>(*__io_ctx, __port_worker_mqtt_info,worker_server::WORKER_MQTT_T);
+	__server_mqtt = make_shared<worker_server::Server>(__io_ctx, __port_worker_mqtt_info,worker_server::WORKER_MQTT_T);
 }
 void MainServer::stop(){
 	__server_mqtt->stop();

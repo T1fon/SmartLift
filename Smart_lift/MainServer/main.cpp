@@ -8,7 +8,7 @@
 #include "MainServer.hpp"
 
 int main(int argc, char* argv[]) {
-
+    setlocale(LC_ALL, "Russian");
     auto const address = HTTPS_Server::net::ip::make_address("0.0.0.0");
     auto const port = static_cast<unsigned short>(std::atoi("443"));
     auto const port_MQTT = static_cast<unsigned short>(std::atoi("1883"));

@@ -3,12 +3,15 @@
 
 Config::Config(shared_ptr<Log> lg, string root_directory, string way, string file_name)
 {
+	if (file_name == "") {
+		__file_name = CONFIG_FILE;
+	}
 	setLog(lg);
 
 	__root_directory = root_directory;
 	__way = way;
 	__file_name = file_name;
-	__final_path = __way + __root_directory + __file_name;
+	__final_path = __root_directory + __way + __file_name;
 	ifstream fin(__final_path);
 	if (!fin.is_open())
 	{

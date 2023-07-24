@@ -2,13 +2,37 @@
 #include "MQTTWorker.hpp"
 using namespace std;
 
-MQTTWorker::MQTTWorker() {
-
+MQTTWorker::MQTTWorker(string config_file_name) {
+    __config_file_name = config_file_name;
 }
 MQTTWorker::~MQTTWorker() {
     this->stop();
 }
-void MQTTWorker::init() {
+int MQTTWorker::init() {
+
+    __logger = make_shared<Log>("", "test_log.log");
+    __configer = make_shared<Config>(__logger,"./","");
+    
+    __configer->readConfig();
+    __config_data = __configer->getConfigInfo();
+
+    if (__config_data.size() == 0) {
+        return CONFIG_FILE_NOT_OPEN;
+    }
+    else if (__config_data.size() < __COUNT_CONFIG_FIELDS) {
+        return CONFIG_DATA_NOT_FULL;
+    }
+
+    try {
+        for (int i = 0, length = __CONFIG_FIELDS.size(); i < length; i++) {
+            __config_data.at(__CONFIG_FIELDS.at(i));
+        }
+    }
+    catch (exception& e) {
+        cout << e.what() << endl;
+        return CONFIG_DATA_NOT_FULL;
+    }
+
     MQTT_NS::setup_log();
 
     string port = DEFAULT_PORT;
@@ -19,9 +43,11 @@ void MQTTWorker::init() {
         ),
         __io_ctx
     ));
-    __mqtt_broker.setServer(__mqtt_server);
-    __mqtt_broker.init();
-    __ms_worker = make_shared<MSWorker>("127.0.0.1", "1337", "1", __io_ctx);
+    __mqtt_broker = make_shared<mqtt_broker::MQTTBroker>();
+    __mqtt_broker->setServer(__mqtt_server);
+    __mqtt_broker->init();
+    __ms_worker = make_shared<MSWorker>(__config_data["Main_server_ip"], __config_data["Main_server_info_port"], __config_data["Id"], __io_ctx);
+    return SUCCESSFUL;
 }
 void MQTTWorker::start() {
     //__mqtt_broker.start();

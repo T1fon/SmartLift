@@ -14,72 +14,39 @@ MSWorker::~MSWorker() {
 	this->stop();
 	delete[] __buf_recive;
 }
+void MSWorker::start() {
+	__socket->async_connect(*__end_point, boost::bind(&MSWorker::__requestAuthentication, shared_from_this(), _1));
+}
+void MSWorker::stop() {
+	if (__socket->is_open()) {
+		__socket->close();
+	}
+}
 void MSWorker::__requestAuthentication(const boost::system::error_code& error){
 	if (error) {
-		cerr << error.message() << endl;
+		cerr << error.what() << endl;
 		//чтобы не спамить временное решение
 		Sleep(2000);
+		this->stop();
 		this->start();
 		return;
 	}
 	__buf_send = serialize(json_formatter::worker::request::connect(__WORKER_NAME, __id));
 	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
-						 boost::bind(&MSWorker::__responseAuthentication, shared_from_this(), _1,_2));
+						 boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1,_2));
 }
-void MSWorker::__responseAuthentication(const boost::system::error_code& error, std::size_t count_send_byte) {
-	if (error) {
-		cerr << error.message() << endl;
-		//чтобы не спамить временное решение
-		Sleep(2000);
-		__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
-			boost::bind(&MSWorker::__responseAuthentication, shared_from_this(), _1, _2));
-		return;
-	}
 
+	//void* a = (void*)(&vector<string>());
+	//vector<string>* b = (vector<string>*)a;
+	//b->push_back("nu kak tak to 4 kurs ushe");
 
-	static size_t temp_send_byte = 0;
-	temp_send_byte += count_send_byte;
-	if (__buf_send.size() != temp_send_byte) {
-		__socket->async_send(boost::asio::buffer(__buf_send.c_str()+temp_send_byte, (__buf_send.size() - temp_send_byte)),
-			boost::bind(&MSWorker::__responseAuthentication, shared_from_this(), _1, _2));
-		return;
-	}
-	temp_send_byte = 0;
-	__buf_send = "";
-	__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-							boost::bind(&MSWorker::__connectAnalize, shared_from_this(), _1, _2));
-}
-void MSWorker::__connectAnalize(const boost::system::error_code& error, std::size_t count_recive_byte) {
-	if (error) {
-		cerr << error.message() << endl;
-		Sleep(1000);
-		__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-			boost::bind(&MSWorker::__connectAnalize, shared_from_this(), _1, _2));
-		return;
-	}
+void MSWorker::__connectAnalize() {
 	
 	try {
-		__parser.write(__buf_recive,count_recive_byte);
-	}
-	catch (exception& e) {
-		cerr << e.what() << endl;
-	}
-	
-	fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
-	if (!__parser.done()) {
-		cerr << "connectAnalize json not full" << endl;
-		__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-			boost::bind(&MSWorker::__connectAnalize, shared_from_this(), _1,_2));
-		return;
-	}
-
-	try {
-		__parser.finish();
-		__buf_json_recive = __parser.release();
-		__parser.reset();
-		
-		if (__buf_json_recive.at("response").at("status").as_string() == "success") {
+		if (__buf_json_recive.at("response").at("status") == "success") {
 			cout << "Connect Successfull!!!!!!" << endl;
+			__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
+				boost::bind(&MSWorker::__reciveCommand, shared_from_this(), _1, _2));
 		}
 		else {
 			cout << "Connect Fail!!!!!!" << endl;
@@ -88,37 +55,116 @@ void MSWorker::__connectAnalize(const boost::system::error_code& error, std::siz
 			this->stop();
 		}
 	}
-	catch (std::exception e) {
-		cout << e.what() << endl;
+	catch (std::exception &e) {
+		cout << "Connect analize " << e.what() << endl;
 
-		__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-			boost::bind(&MSWorker::__connectAnalize, shared_from_this(), _1, _2));
+		this->stop();
+		//__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
+	//			boost::bind(&MSWorker::__connectAnalize, shared_from_this(), _1, _2));
+		return;
 	}
 
-	__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-							boost::bind(&MSWorker::__waitCommand, shared_from_this(), _1, _2));
 }
 
-void MSWorker::__waitCommand(const boost::system::error_code& error, std::size_t count_recive_byte) {
+MSWorker::__CHECK_STATUS MSWorker::__reciveCheck(const size_t& count_recive_byte, __handler_t&& handler) {
+	try {
+		__parser.write(__buf_recive, count_recive_byte);
+	}
+	catch (exception& e) {
+		cerr << e.what() << endl;
+	}
+	cout << __buf_recive << endl;
+	fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
+
+	if (!__parser.done()) {
+		cerr << "connectAnalize json not full" << endl;
+		__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE), handler);
+		return __CHECK_STATUS::FAIL;
+	}
+	try {
+		__parser.finish();
+		__buf_json_recive = __parser.release();
+		__parser.reset();
+	}
+	catch (exception& e) {
+		__parser.reset();
+		__buf_json_recive = {};
+		cerr << "_reciveCheck " << e.what();
+		return __CHECK_STATUS::FAIL;
+	}
+	return __CHECK_STATUS::SUCCESS;
+}
+MSWorker::__CHECK_STATUS MSWorker::__sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, __handler_t&& handler) {
+	temp_send_byte += count_send_byte;
+	if (__buf_send.size() != temp_send_byte) {
+		__socket->async_send(boost::asio::buffer(__buf_send.c_str() + temp_send_byte, (__buf_send.size() - temp_send_byte)), handler);
+		return __CHECK_STATUS::FAIL;
+	}
+	return __CHECK_STATUS::SUCCESS;
+}
+
+void MSWorker::__sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) {
 	if (error) {
-		cerr << error.message() << endl;
-		Sleep(1000);
-		__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-			boost::bind(&MSWorker::__waitCommand, shared_from_this(), _1, _2));
+		cerr << "sendCommand " << error.what() << endl;
+		this->stop();
+		this->start();
+		return;
+	}
+
+	static size_t temp_send_byte = 0;
+	if(__sendCheck(count_send_byte,temp_send_byte, boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2)) == __CHECK_STATUS::FAIL){
+		return;
+	}
+	temp_send_byte = 0;
+	__buf_send = "";
+	__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
+		boost::bind(&MSWorker::__reciveCommand, shared_from_this(), _1, _2));
+}
+
+void MSWorker::__reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) {
+	if (error) {
+		cerr << "reciveCommand " << error.what() << endl;
+		this->stop();
+		this->start();
 		return;
 	}
 	
-	
-	//ожидаем новой команды
-	__socket->async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE),
-		boost::bind(&MSWorker::__waitCommand, shared_from_this(), _1, _2));
+	if(__reciveCheck(count_recive_byte, boost::bind(&MSWorker::__reciveCommand, shared_from_this(), _1, _2)) == __CHECK_STATUS::FAIL)
+	{return;}
+
+	__commandAnalize();
+	__buf_json_recive = {};	
 }
 
-void MSWorker::start() {
-	__socket->async_connect(*__end_point, boost::bind(&MSWorker::__requestAuthentication, shared_from_this(), _1));
-}
-void MSWorker::stop() {
-	if(__socket->is_open()) {
-		__socket->close();
+void MSWorker::__commandAnalize() {
+	try {
+		boost::json::value target = __buf_json_recive.at("target");
+		
+		if (target == "ping") {
+			__responsePing();
+		}
+		else if(target == "Move_lift") {
+			
+		}
+		else if (target == "disconnect") {
+			__responseDisconnect();
+		}
+		else if (target == "connect") {
+			__connectAnalize();
+		}
 	}
+	catch (std::exception &e) {
+		cout << "Command analize " << e.what() << endl;
+		return;
+	}
+}
+void MSWorker::__responsePing() {
+	__buf_send = serialize(json_formatter::worker::response::ping(__WORKER_NAME));
+	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
+		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
+}
+void MSWorker::__responseDisconnect() {
+	__buf_send = serialize(json_formatter::worker::response::disconnect(__WORKER_NAME));
+	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
+		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
 }

@@ -29,8 +29,7 @@ set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GL
 set(MOD_Server "${MODULES}/WorkerServer/WorkerServer.hpp" "${MODULES}/WorkerServer/WorkerServer.cpp")
 set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
 set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
-set(MOD_MQTT_Broker "${MODULES}/MQTTBroker/MQTTBroker.hpp" "${MODULES}/MQTTBroker/MQTTBroker.cpp")
-set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter})
+set(SOURCE_MODULES ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter})
 
 add_executable (MainServer "main.cpp" "MainServer.cpp" "MainServer.hpp" ${SOURCE_MODULES})
 
