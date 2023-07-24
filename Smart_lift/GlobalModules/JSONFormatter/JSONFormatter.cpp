@@ -45,6 +45,17 @@ json::object worker::response::connect(std::string sender){
 json::object worker::response::disconnect(std::string sender){
 	return json::object({ { "sender", sender}, {"target", "disconnect"}, { "response", {{"status", "success"}}} });
 }
+json::object worker::response::errorTarget(std::string sender, boost::json::value target, ERROR_CODE err_code, std::string err_message) {
+	return json::object({	{"sender", sender},
+							{"target", target},
+							{"response", {
+								{"status", "fail"},
+								{"error_code", std::to_string(err_code)},
+								{"message", err_message}
+								}
+							}
+						});
+}
 json::object worker::response::connect(std::string sender, ERROR_CODE err_code, std::string err_message){
 	return json::object({	{"sender", sender}, 
 							{"target", "connect"}, 
@@ -161,6 +172,9 @@ json::object database::request::query(std::string sender, QUERY_METHOD method, s
 	}
 }
 
+json::object database::response::errorTarget(std::string sender, boost::json::value target, ERROR_CODE err_code, std::string err_message) {
+	return worker::response::errorTarget(sender, target, err_code, err_message);
+}
 json::object database::response::ping(std::string sender){
 	return worker::response::ping(sender);
 }

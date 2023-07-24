@@ -9,6 +9,8 @@ namespace json_formatter{
 	enum ERROR_CODE {
 		CONNECT = 3,
 		DISCONNECT,
+		TARGET
+
 	};
 	enum STATUS_OPERATION{
 		success = 1,
@@ -28,6 +30,7 @@ namespace json_formatter{
 		namespace response {
 			/*־ֱÙֵָ*/
 			boost::json::object ping(std::string sender);
+			boost::json::object errorTarget(std::string sender, boost::json::value target, ERROR_CODE err_code, std::string err_message = "");
 			//מעגועטע success
 			boost::json::object connect(std::string sender);
 			boost::json::object disconnect(std::string sender);
@@ -55,6 +58,7 @@ namespace json_formatter{
 		}
 		namespace response {
 			boost::json::object ping(std::string sender);
+			boost::json::object errorTarget(std::string sender, boost::json::value target, ERROR_CODE err_code, std::string err_message = "");
 			//מעגועטע success
 			boost::json::object connect(std::string sender);
 			boost::json::object disconnect(std::string sender);
