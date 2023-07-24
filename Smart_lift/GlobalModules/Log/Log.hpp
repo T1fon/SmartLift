@@ -14,22 +14,24 @@ using namespace std;
 class Log : public enable_shared_from_this<Log>
 {
 public:
-    Log(string bufWay, string name);
+    Log(string way, string rootDirectory, string nameClass);
     void writeTempLog(int error, string clas, string message);
     void writeLog(int error, string clas, string message);
     string getDate();
     bool checkFile();
     streamsize getFileSize();
-    void setBufWay(string boof);
-    void setNameFile(string boof);
+    void setFinalPath();
+    void writeLogToFile(string clas, string message, int error);
 private:
     string __nameFile;
-    string __nameLogFile;
+    string __finalPath;
     string __date;
     int __numFile;
     int __numMassive;
     string __temporaryLog[3];
-    string __way = "..\\..\\..\\..\\..\\Smart_lift\\";
+    string __way;
     string __bufWay;
+    string __rootDirectory;
+
 };
 
