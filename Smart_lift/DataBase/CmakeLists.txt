@@ -16,6 +16,7 @@ else()
 
 
 	set(MODULES "Modules")
+	set(GLOBAL_MODULES "../GlobalModules")
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
@@ -29,11 +30,14 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Client "${MODULES}/Client/Client.hpp" "${MODULES}/Client/Client.cpp")
+set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
+set(MOD_FILES "${GLOBAL_MODULES}/Log/Log.hpp" "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
 set(MOD_Libraries "${MODULES}/Libraries/shell.c" "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
+set(MOD_Server "${MODULES}/Server/DataBaseServer.cpp" "${MODULES}/Server/DataBaseServer.hpp")
 set(SOURCE_LIBRARY ${MOD_Libraries})
-set(SOURCE_MODULES ${MOD_Client})
-add_executable (DataBaseServer "DataBaseServer.cpp" "DataBaseServer.hpp"  ${MOD_Libraries})
+set(SOURCE_MODULES ${MOD_JSON} ${MOD_FILES})
+set(SOURCE_SERVER ${MOD_Server})
+add_executable (DataBaseServer "DataBase.cpp"  ${MOD_Libraries} ${SOURCE_MODULES} ${SOURCE_SERVER})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -52,10 +56,12 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_include_directories(DataBaseServer PUBLIC ${OPENSSL_INCLUDE_DIR})
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 
 
 	target_link_libraries(DataBaseServer PUBLIC Boost::thread)
+	target_link_libraries(DataBaseServer PUBLIC Boost::json)
 	target_link_libraries(DataBaseServer PUBLIC OpenSSL::SSL)
 	target_link_libraries(DataBaseServer PUBLIC OpenSSL::Crypto)
 else()
