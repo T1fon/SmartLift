@@ -25,13 +25,15 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
+set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
+set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
 set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
 set(MOD_Server "${MODULES}/WorkerServer/WorkerServer.hpp" "${MODULES}/WorkerServer/WorkerServer.cpp")
 set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
 set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
-set(SOURCE_MODULES ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter})
+set(SOURCE_MODULES ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter} ${MOD_LOG} ${MOD_CONFIG})
 
-add_executable (MainServer "main.cpp" "MainServer.cpp" "MainServer.hpp" ${SOURCE_MODULES})
+add_executable (MainServer "main.cpp" "MainServer.hpp" "MainServer.cpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)

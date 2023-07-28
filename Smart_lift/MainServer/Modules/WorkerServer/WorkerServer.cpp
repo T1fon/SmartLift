@@ -9,6 +9,8 @@ Server::Server(std::shared_ptr < boost::asio::io_context> io_context, unsigned s
     __sender = sender;
     __context = io_context;
 	__acceptor = make_shared<boost::asio::ip::tcp::acceptor>(*io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port));
+    __kill_timer = make_shared<boost::asio::deadline_timer>(*__context);
+    __sessions = make_shared<std::vector<std::shared_ptr<Session>>>();
 }
 
 Server::~Server() {
@@ -16,38 +18,62 @@ Server::~Server() {
 }
 
 void Server::start() {
-	__doAccept();
+	__accept();
+    __kill_timer->expires_from_now(boost::posix_time::seconds(__TIME_KILL));
+    __kill_timer->async_wait(boost::bind(&Server::__killSession, shared_from_this(), _1));
 }
 
 void Server::stop() {
-    for (size_t i = 0, length = __sessions.size(); i < length; i++) {
-        __sessions.back()->stop();
+    for (size_t i = 0, length = __sessions->size(); i < length; i++) {
+        __sessions->back()->stop();
     }
+    __sessions->clear();
 }
 
-void Server::__doAccept() {
+void Server::__accept() {
     __acceptor->async_accept([this](boost::system::error_code error, boost::asio::ip::tcp::socket socket)
         {
             if (error) {
                 cerr << error.message() << endl;
-                __doAccept();
+                __accept();
             }
             switch (__worker_type) {
             case WORKER_MQTT_T:
 
-                __sessions.push_back(std::make_shared<SessionMQTT>(__sender,socket, boost::asio::deadline_timer (*__context), boost::asio::deadline_timer(*__context)));
+                __sessions->push_back(std::make_shared<SessionMQTT>(__sender,socket, boost::asio::deadline_timer (*__context), boost::asio::deadline_timer(*__context)));
                 break;
             case WORKER_MARUSSIA_T:
                 //__sessions.push_back(std::make_shared<SessionMarussia>(std::move(socket)));
                 break;
             }
             
-            __sessions.back()->start();
-            __doAccept();
+            __sessions->back()->start();
+            __accept();
         }
     );
 }
-
+void Server::__killSession(const boost::system::error_code& error) {
+    bool kill = false;
+    for (auto i = __sessions->begin(); i != __sessions->end(); i++) {
+        if (!(*i)->isLive()) {
+            (*i)->stop();
+            __sessions->erase(i);
+            kill = true;
+            break;
+        }
+    }
+    if (kill) {
+        __kill_timer->expires_from_now(boost::posix_time::seconds(0));
+        __kill_timer->async_wait(boost::bind(&Server::__killSession, shared_from_this(), _1));
+    }
+    else{
+        __kill_timer->expires_from_now(boost::posix_time::seconds(__TIME_KILL));
+        __kill_timer->async_wait(boost::bind(&Server::__killSession, shared_from_this(), _1));
+    }
+}
+std::shared_ptr<std::vector<std::shared_ptr<Session>>> Server::getSessions() {
+    return __sessions;
+}
 //-------------------------------------------------------------//
 
 ISession::ISession(){
@@ -62,24 +88,50 @@ ISession::~ISession() { cout << "ISESSION DELETE" << endl; delete[] _buf_recive;
 
 //-------------------------------------------------------------//
 
-SessionMQTT::SessionMQTT(string sender,  boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer):
-__socket(std::move(socket)), __ping_timer(std::move(ping_timer)), __dead_ping_timer(std::move(dead_ping_timer))
-{ 
+
+Session::Session(string sender, boost::asio::ip::tcp::socket& socket,
+    boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
+    _socket(std::move(socket)),
+    _ping_timer(std::move(ping_timer)), _dead_ping_timer(std::move(dead_ping_timer)), 
+    _callback(boost::bind(&Session::__emptyCallback, shared_from_this(), _1, _2))
+{
     _sender = sender;
 }
-SessionMQTT::~SessionMQTT(){
+Session::~Session() {
     this->stop();
 }
-void SessionMQTT::start() {
-    __socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), boost::bind(&SessionMQTT::_reciveCommand, shared_from_this(), _1, _2));
+void Session::start() {
+    _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), boost::bind(&Session::_reciveCommand, shared_from_this(), _1, _2));
 }
-void SessionMQTT::stop() {
-    if (__socket.is_open()) {
+void Session::stop() {
+    if (_socket.is_open()) {
         _is_live = false;
-        __socket.close();
+        _socket.close();
     }
 }
-SessionMQTT::_CHECK_STATUS SessionMQTT::_reciveCheck(const size_t& count_recive_byte, _handler_t&& handler) {
+void Session::_autorization() {
+    try {
+        _id = _buf_json_recive.at("request").at("id").as_string();
+        cout << "ID: " << _id << endl;
+        /*Проверить есть ли такой пользователь*/
+
+        /*------------------------------------*/
+        //В случае успеха
+        _is_live = true;
+        _buf_send = serialize(json_formatter::worker::response::connect(_sender));
+
+        _ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
+        _ping_timer.async_wait(boost::bind(&Session::_ping, shared_from_this(), _1));
+    }
+    catch (exception& e) {
+        cerr << "__autorization " << e.what();
+        _buf_send = serialize(json_formatter::worker::response::connect(_sender, json_formatter::ERROR_CODE::CONNECT, "Field Id not found"));
+    }
+    _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
+        boost::bind(&Session::_sendCommand, shared_from_this(), _1, _2));
+}
+Session::_CHECK_STATUS Session::_reciveCheck(const size_t& count_recive_byte, _handler_t&& handler)
+{
     try {
         _json_parser.write(_buf_recive, count_recive_byte);
     }
@@ -91,7 +143,7 @@ SessionMQTT::_CHECK_STATUS SessionMQTT::_reciveCheck(const size_t& count_recive_
 
     if (!_json_parser.done()) {
         cerr << "_reciveCheck json not full " << endl;
-        __socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), handler);
+        _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), handler);
         return _CHECK_STATUS::FAIL;
     }
     try {
@@ -107,15 +159,17 @@ SessionMQTT::_CHECK_STATUS SessionMQTT::_reciveCheck(const size_t& count_recive_
     }
     return _CHECK_STATUS::SUCCESS;
 }
-SessionMQTT::_CHECK_STATUS SessionMQTT::_sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, _handler_t&& handler) {
+Session::_CHECK_STATUS Session::_sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, _handler_t&& handler)
+{
     temp_send_byte += count_send_byte;
     if (_buf_send.size() != temp_send_byte) {
-        __socket.async_send(boost::asio::buffer(_buf_send.c_str() + temp_send_byte, (_buf_send.size() - temp_send_byte)), handler);
+        _socket.async_send(boost::asio::buffer(_buf_send.c_str() + temp_send_byte, (_buf_send.size() - temp_send_byte)), handler);
         return _CHECK_STATUS::FAIL;
     }
     return _CHECK_STATUS::SUCCESS;
 }
-void SessionMQTT::_sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) {
+void Session::_sendCommand(const boost::system::error_code& error, std::size_t count_send_byte)
+{
     if (error) {
         cerr << "sendCommand " << error.what() << endl;
         this->stop();
@@ -123,82 +177,35 @@ void SessionMQTT::_sendCommand(const boost::system::error_code& error, std::size
     }
 
     static size_t temp_send_byte = 0;
-    if (_sendCheck(count_send_byte, temp_send_byte, boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2)) == _CHECK_STATUS::FAIL) {
+    if (_sendCheck(count_send_byte, temp_send_byte, boost::bind(&Session::_sendCommand, shared_from_this(), _1, _2)) == _CHECK_STATUS::FAIL) {
         return;
     }
     temp_send_byte = 0;
     _buf_send = "";
     if (_next_recive) {
         _next_recive = false;
-        __socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
-            boost::bind(&SessionMQTT::_reciveCommand, shared_from_this(), _1, _2));
+        _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
+            boost::bind(&Session::_reciveCommand, shared_from_this(), _1, _2));
     }
 }
-void SessionMQTT::_reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) {
+void Session::_reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte)
+{
     if (error) {
         cerr << "_reciveCommand " << error.what() << endl;
         this->stop();
         return;
     }
 
-    if (_reciveCheck(count_recive_byte, boost::bind(&SessionMQTT::_reciveCommand, shared_from_this(), _1, _2)) == _CHECK_STATUS::FAIL)
+    if (_reciveCheck(count_recive_byte, boost::bind(&Session::_reciveCommand, shared_from_this(), _1, _2)) == _CHECK_STATUS::FAIL)
     {
         return;
     }
-    
+
     _commandAnalize();
     _buf_json_recive = {};
 }
-
-
-void SessionMQTT::_autorization() {
-    try {
-        _id = _buf_json_recive.at("request").at("id").as_string();
-        /*Проверить есть ли такой пользователь*/
-
-        /*------------------------------------*/
-        //В случае успеха
-        _is_live = true;
-        _buf_send = serialize(json_formatter::worker::response::connect(_sender));
-        
-        __ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
-        __ping_timer.async_wait(boost::bind(&SessionMQTT::_ping, shared_from_this(), _1));
-    }
-    catch (exception& e) {
-        cerr << "__autorization " << e.what();
-        _buf_send = serialize(json_formatter::worker::response::connect(_sender, json_formatter::ERROR_CODE::CONNECT, "Field Id not found"));
-    }
-    __socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
-        boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2));
-}
-
-void SessionMQTT::_commandAnalize() {
-    try {
-        boost::json::value target = _buf_json_recive.at("target");
-        if (target == "ping") {
-            _analizePing();
-        }
-        else if (target == "mqtt_message") {
-            /**/
-        }
-        else if (target == "connect") {
-            _autorization();
-        }
-    }
-    catch (exception& e) {
-        cerr << "_commandAnalize " << e.what() <<endl;
-    }
-}
-void SessionMQTT::__startCommand(SessionMQTT::COMMAND_CODE command_code, void *command_parametr) {
-    
-    if(command_code == COMMAND_CODE::MOVE_LIFT){
-        param_move_lift_t *parametr = (param_move_lift_t*)command_parametr;
-        _buf_send = serialize(json_formatter::worker::request::mqtt_move(_sender,parametr->station_id,parametr->lift_block_id,parametr->floor));
-        __socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
-            boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2));
-    }
-}
-void SessionMQTT::_ping(const boost::system::error_code& error) {
+void Session::_ping(const boost::system::error_code& error)
+{
     if (error) {
         cerr << "_ping " << error.what() << endl;
         this->stop();
@@ -208,19 +215,20 @@ void SessionMQTT::_ping(const boost::system::error_code& error) {
     cout << _buf_send << endl;
     _next_recive = true;
 
-    __dead_ping_timer.cancel();
-    __dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME * 2));
-    __dead_ping_timer.async_wait(boost::bind(&SessionMQTT::_deadPing, shared_from_this(), _1));
+    _dead_ping_timer.cancel();
+    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME * 2));
+    _dead_ping_timer.async_wait(boost::bind(&Session::_deadPing, shared_from_this(), _1));
 
-    __socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
-        boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2));
+    _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
+        boost::bind(&Session::_sendCommand, shared_from_this(), _1, _2));
 }
-void SessionMQTT::_analizePing() {
+void Session::_analizePing()
+{
     try {
         cout << _buf_json_recive << endl;
         if (_buf_json_recive.at("response").at("status") == "success") {
-            __ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
-            __ping_timer.async_wait(boost::bind(&SessionMQTT::_ping, shared_from_this(), _1));
+            _ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
+            _ping_timer.async_wait(boost::bind(&Session::_ping, shared_from_this(), _1));
         }
         else {
             _is_live = false;
@@ -235,10 +243,9 @@ void SessionMQTT::_analizePing() {
         return;
     }
 }
-void SessionMQTT::_deadPing(const boost::system::error_code& error) {
-    
+void Session::_deadPing(const boost::system::error_code& error) {
     if (!_is_live) {
-        __dead_ping_timer.cancel();
+        _dead_ping_timer.cancel();
         cout << "DEAD PING" << endl;
         if (error) {
             cerr << error << endl;
@@ -248,20 +255,102 @@ void SessionMQTT::_deadPing(const boost::system::error_code& error) {
         this->stop();
     }
 }
-bool SessionMQTT::isLive() {
+bool Session::isLive() {
     return _is_live;
 }
+void Session::__emptyCallback(boost::system::error_code error, boost::json::value data)
+{
+    cerr << "Был вызван __emptyCallback" << endl;
+}
+void Session::_commandAnalize() {}
+void Session::_startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) {}
+void Session::_startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback) {}
+//-------------------------------------------------------------//
+SessionMQTT::SessionMQTT(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
+    Session(sender, socket, std::move(ping_timer), std::move(dead_ping_timer))
+{}
+SessionMQTT::~SessionMQTT() {
+    this->stop();
+}
+void SessionMQTT::_commandAnalize() {
+    try {
+        boost::json::value target = _buf_json_recive.at("target");
+        if (target == "ping") {
+            _analizePing();
+        }
+        else if (target == "mqtt_message") {
+            /**/
+        }
+        else if (target == "connect") {
+            _autorization();
+        }
+    }
+    catch (exception& e) {
+        cerr << "_commandAnalize " << e.what() << endl;
+    }
+}
+void SessionMQTT::_startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) {
+    if (command_code == COMMAND_CODE_MQTT::MOVE_LIFT) {
+        _callback = callback;
+        move_lift_t* parametr = (move_lift_t*)command_parametr;
+        _buf_send = serialize(json_formatter::worker::request::mqtt_move(_sender, parametr->station_id, parametr->lift_block_id, parametr->floor));
+        _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
+            boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2));
+    }
+}
+void SessionMQTT::__mqttMessage() {
+    _callback({}, _buf_json_recive);
+}
+
 //-------------------------------------------------------------//
 
-SessionMarussia::SessionMarussia(string sender, boost::asio::ip::tcp::socket socket) : __socket(std::move(socket)) { _sender = sender; }
+SessionMarussia::SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket,
+    boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
+    Session(sender, socket, std::move(ping_timer), std::move(dead_ping_timer))
+{}
 SessionMarussia::~SessionMarussia() {
     this->stop();
 }
-void SessionMarussia::start() {
-//    __socket.async_receive(boost::asio::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&SessionMarussia::__requestAutorization,shared_from_this(),_1,_2));
-}
-void SessionMarussia::stop() {
-    if(__socket.is_open()) {
-        __socket.close();
+
+void SessionMarussia::_commandAnalize() 
+{
+    try {
+        boost::json::value target = _buf_json_recive.at("target");
+        if (target == "ping") {
+            _analizePing();
+        }
+        else if (target == "static_message") {
+            /**/
+            __staticMessage();
+        }
+        else if (target == "move_lift") {
+            /**/
+            __moveLift();
+        }
+        else if (target == "connect") {
+            _autorization();
+        }
+    }
+    catch (exception& e) {
+        cerr << "_commandAnalize " << e.what() << endl;
     }
 }
+void SessionMarussia::_startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback)
+{
+    if (command_code == MARUSSIA_STATION_REQUEST) {
+        _callback = callback;
+        marussia_station_request_t* parametr = (marussia_station_request_t*)command_parametr;
+        _buf_send = serialize(json_formatter::worker::request::marussia_request(_sender, parametr->station_id, parametr->body));
+        _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()), 
+                            boost::bind(&SessionMarussia::_sendCommand, shared_from_this(), _1, _2));
+    }
+}
+void SessionMarussia::__staticMessage() 
+{
+    _callback({}, _buf_json_recive);
+}
+void SessionMarussia::__moveLift() 
+{
+    _callback({}, _buf_json_recive);
+}
+

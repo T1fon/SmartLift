@@ -32,7 +32,7 @@ Config::Config(shared_ptr<Log> lg, string root_directory, string way, string fil
 
 void Config::setLog(shared_ptr<Log> lg)
 {
-	__log_config = lg;
+	__log_ñonfig = lg;
 }
 
 void Config::setWay(string way)
@@ -50,7 +50,7 @@ void Config::setFileName(string file_name) {
 }
 void Config::__writeError(int error)
 {
-	__log_config->writeLog(error, "Config", "open config");
+	__log_ñonfig->writeLog(error, "Config", "open config");
 }
 
 void Config::readConfig()
@@ -69,7 +69,7 @@ void Config::readConfig()
 			boof.erase(0, border + 1);
 			config.insert(pair<string, string>(key, boof));
 		}
-		__log_config->writeLog(0, "config", "Write Config");
+		__log_ñonfig->writeLog(0, "config", "Write Config");
 		__config_info = config;
 	}
 	else

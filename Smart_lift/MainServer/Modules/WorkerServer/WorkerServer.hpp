@@ -6,7 +6,6 @@
 #include <boost/asio.hpp>
 #include <boost/json.hpp>
 #include "../Smart_Lift/Smart_lift/GlobalModules/JSONFormatter/JSONFormatter.hpp"
-
 using namespace std;
 typedef std::shared_ptr<boost::asio::ip::tcp::socket> socket_ptr;
 
@@ -41,7 +40,6 @@ namespace worker_server {
         virtual _CHECK_STATUS _sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, _handler_t&& handler) = 0;
         virtual void _sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) = 0;
         virtual void _reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) = 0;
-        virtual void _commandAnalize() = 0;
         virtual void _ping(const boost::system::error_code& error) = 0;
         virtual void _analizePing() = 0;
         virtual void _deadPing(const boost::system::error_code& error) = 0;
@@ -54,69 +52,100 @@ namespace worker_server {
         virtual void stop() = 0;
         virtual bool isLive() = 0;
     };
-    
-    class SessionMQTT : public std::enable_shared_from_this<SessionMQTT>, public ISession {
+
+    /*-----------------------------------------------------------------------------------*/
+    class Session : public std::enable_shared_from_this<Session>, protected ISession {
     public:
-        enum COMMAND_CODE {
-            MOVE_LIFT = 1,
+        enum COMMAND_CODE_MQTT {
+            MOVE_LIFT = 1
         };
-        struct param_move_lift_t {
-            std::string station_id = "";
-            std::string lift_block_id = "";
-            int floor = 0;
+        enum COMMAND_CODE_MARUSSIA {
+            MARUSSIA_STATION_REQUEST = 1
         };
     private:
-        boost::asio::ip::tcp::socket __socket;
-        boost::asio::deadline_timer __ping_timer;
-        boost::asio::deadline_timer __dead_ping_timer;
+        void __emptyCallback(boost::system::error_code error, boost::json::value data);
+    protected:
+        typedef std::function<void(boost::system::error_code, boost::json::value)> _callback_t;
+
+        boost::asio::ip::tcp::socket _socket;
+        boost::asio::deadline_timer _ping_timer;
+        boost::asio::deadline_timer _dead_ping_timer;
+        _callback_t&& _callback;
 
         virtual void _autorization() override;
         virtual _CHECK_STATUS _reciveCheck(const size_t& count_recive_byte, _handler_t&& handler) override;
         virtual _CHECK_STATUS _sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, _handler_t&& handler) override;
         virtual void _sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) override;
         virtual void _reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) override;
-        virtual void _commandAnalize() override;
+        virtual void _commandAnalize();
+        virtual void _startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback);
+        virtual void _startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
         virtual void _ping(const boost::system::error_code& error) override;
         virtual void _analizePing() override;
         virtual void _deadPing(const boost::system::error_code& error) override;
-        
-        void __startCommand(SessionMQTT::COMMAND_CODE command_code, void *command_parametr);
-
     public:
-        
-        SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
-        virtual ~SessionMQTT();
-        
+        Session(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        virtual ~Session();
+
         virtual void start() override;
         virtual void stop() override;
         virtual bool isLive() override;
     };
-    class SessionMarussia : public std::enable_shared_from_this<SessionMarussia>, public ISession {
+    /*-----------------------------------------------------------------------------------*/
+    class SessionMQTT : public Session {
     private:
-        boost::asio::ip::tcp::socket __socket;
-        
+        void __mqttMessage();
+    protected:
+        virtual void _commandAnalize() override;
+        virtual void _startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) override;
     public:
-        SessionMarussia(string sender, boost::asio::ip::tcp::socket socket);
-        virtual ~SessionMarussia();
-        virtual void start() override;
-        virtual void stop() override;
+        struct move_lift_t {
+            std::string station_id = "";
+            std::string lift_block_id = "";
+            int floor = 0;
+        };
+        SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        virtual ~SessionMQTT();
     };
 
+    /*-----------------------------------------------------------------------------------*/
     
-    class Server {
+    class SessionMarussia: public Session {
     private:
+        void __staticMessage();
+        void __moveLift();
+    protected:
+        virtual void _commandAnalize() override;
+        void _startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
+    public:
+        struct marussia_station_request_t {
+            std::string station_id = "";
+            boost::json::value body = {};
+        };
+        SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        virtual ~SessionMarussia();
+    };
+
+    /*-----------------------------------------------------------------------------------*/
+    
+    class Server: public std::enable_shared_from_this<Server> {
+    private:
+        const int __TIME_KILL = 30;
         WORKER_T __worker_type;
         string __sender;
-        std::shared_ptr < boost::asio::ip::tcp::acceptor> __acceptor;
+        std::shared_ptr <boost::asio::ip::tcp::acceptor> __acceptor;
         std::shared_ptr <boost::asio::io_context> __context;
-        std::vector<std::shared_ptr<ISession>> __sessions;
+        std::shared_ptr<std::vector<std::shared_ptr<Session>>> __sessions;
+        std::shared_ptr<boost::asio::deadline_timer> __kill_timer;
         
-        void __doAccept();
+        void __accept();
+        void __killSession(const boost::system::error_code& error);
     public:
         Server(std::shared_ptr < boost::asio::io_context> io_context, unsigned short port, WORKER_T worker_type, string sender = "Main_server");
         ~Server();
         void start();
         void stop();
+        std::shared_ptr<std::vector<std::shared_ptr<Session>>> getSessions();
     };
 }
 

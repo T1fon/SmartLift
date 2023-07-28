@@ -8,13 +8,7 @@
 #include "MainServer.hpp"
 
 int main(int argc, char* argv[]) {
-    setlocale(LC_ALL, "Russian");
-    auto const address = HTTPS_Server::net::ip::make_address("0.0.0.0");
-    auto const port = static_cast<unsigned short>(std::atoi("443"));
-    auto const port_MQTT = static_cast<unsigned short>(std::atoi("1883"));
-    auto const doc_root = std::make_shared<std::string>("/");
-    auto const threads = std::max<int>(1, std::atoi("3"));
-
+    
     // The io_context is required for all I/O
    // HTTPS_Server::net::io_context ioc{ threads };
 
@@ -44,22 +38,21 @@ int main(int argc, char* argv[]) {
 
         // Run the I/O service on the requested number of threads
 
+    setlocale(LC_ALL, "Russian");
+    string config_file_name = "";
+    for (int i = 1; i < argc; i++) {
+        string flags = argv[i];
+        if (flags == "-cf" || flags == "--config_file") {
+            config_file_name = argv[++i];
+        }
+    }
 
-    MainServer ms({});
-    ms.init();
+    MainServer ms;
+    if (ms.init(config_file_name) != MainServer::PROCESS_CODE::SUCCESSFUL) {
+        return -1;
+    }
     ms.start();
 
-    /*std::vector<std::thread> v;
-    v.reserve(threads - 1);
-    for (auto i = threads - 1; i > 0; --i)
-        v.emplace_back(
-            [&ioc]
-            {
-                ioc.run();
-            });
-    ioc.run();
-
-    //cout << "bebebe" << endl;*/
 
     return EXIT_SUCCESS;
 }

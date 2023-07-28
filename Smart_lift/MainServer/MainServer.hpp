@@ -6,28 +6,39 @@
 #include <boost/asio.hpp>
 #include <boost/beast/ssl.hpp>
 #include "Modules/WorkerServer/WorkerServer.hpp"
+#include "../GlobalModules/Log/Log.hpp"
+#include "../GlobalModules/Config/Config.hpp"
 
 using namespace std;
 
 class MainServer {
 private:
-	unsigned short __port_marussia_station = 0;
-	unsigned short __port_mqtt = 0;
-	unsigned short __port_worker_mqtt = 0;
-	unsigned short __port_worker_mqtt_info = 0;
-	unsigned short __port_worker_marussia = 0;
+	short __port_marussia_station = 0;
+	short __port_mqtt = 0;
+	short __port_worker_mqtt = 0;
+	short __port_worker_mqtt_info = 0;
+	short __port_worker_marussia = 0;
 
 	shared_ptr<boost::asio::io_context> __io_ctx;
 	shared_ptr<boost::asio::ssl::context> __ssl_ctx;
-	unsigned short __count_threads;
+	short __count_threads;
 
 	shared_ptr<worker_server::Server> __server_mqtt;
+	map<string, string> __configuration;
+	shared_ptr<Log> __logger;
+	shared_ptr<Config> __configer;
 
 public:
-	MainServer(map<string,string> configuration);
+	enum PROCESS_CODE {
+		SUCCESSFUL = 0,
+		CONFIG_FILE_NOT_OPEN,
+		CONFIG_DATA_NOT_FULL
+	};
+
+	MainServer();
 	~MainServer();
 
-	void init(unsigned short count_threads = 1);
+	PROCESS_CODE init(string path_to_config_file);
 	void start();
 	void stop();
 };

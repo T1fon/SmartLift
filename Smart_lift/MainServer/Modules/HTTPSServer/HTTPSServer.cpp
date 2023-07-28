@@ -12,8 +12,13 @@ void HTTPS_Server::fail(beast::error_code ec, char const* what) {
 
 Session::Session(tcp::socket&& socket,
     ssl::context& ctx,
-    std::shared_ptr<std::string const> const& doc_root): __stream(std::move(socket), ctx), __doc_root(doc_root)
-{}
+    std::shared_ptr<std::string const> const& doc_root,
+    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
+    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): __stream(std::move(socket), ctx), __doc_root(doc_root)
+{
+    __sessions_marussia = sessions_marussia;
+    __sessions_mqtt = sessions_mqtt;
+}
 
 void Session::run() {
     net::dispatch( __stream.get_executor(), 
@@ -28,7 +33,7 @@ void Session::__onRun() {
 }
 void Session::__onHandshake(beast::error_code ec) {
     if (ec) { return fail(ec, "handshake"); }
-
+    __is_live = true;
     __doRead();
 }
 void Session::__doRead() {
@@ -88,8 +93,11 @@ void Session::__doClose() {
 }
 void Session::__onShutdown(beast::error_code ec) {
     if (ec) { return fail(ec, "shutdown"); }
-        
+    __is_live = false;
     // At this point the connection is closed gracefully
+}
+bool Session::isLive() {
+    return __is_live;
 }
 
 //------------------------------------------------------------------------------
@@ -97,7 +105,10 @@ void Session::__onShutdown(beast::error_code ec) {
 Listener::Listener( net::io_context& ioc,
                     ssl::context& ctx,
                     tcp::endpoint endpoint,
-                    std::shared_ptr<std::string const> const& doc_root): __ioc(ioc),
+                    std::shared_ptr<std::string const> const& doc_root, 
+                    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
+                    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): 
+                                                                         __ioc(ioc),
                                                                          __ctx(ctx),
                                                                          __acceptor(ioc),
                                                                          __doc_root(doc_root)
@@ -136,13 +147,34 @@ Listener::Listener( net::io_context& ioc,
         fail(ec, "listen");
         return;
     }
+
+    __sessions_mqtt = sessions_mqtt;
+    __sessions_marussia = sessions_marussia;
+    __timer_kill = std::make_shared<boost::asio::deadline_timer>(ioc);
+    __sessions = std::make_shared<std::vector<std::shared_ptr<HTTPS_Server::Session>>>();
 }
 void Listener::run() {
-    __doAccept();
+    __acceptor.async_accept(net::make_strand(__ioc), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
+    __timer_kill->expires_from_now(boost::posix_time::seconds(__TIME_DEAD_SESSION));
+    __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession,shared_from_this()));
 }
-void Listener::__doAccept() {
-    // The new connection gets its own strand
-    __acceptor.async_accept( net::make_strand(__ioc), beast::bind_front_handler( &Listener::__onAccept, shared_from_this()) );
+void Listener::__killSession(beast::error_code ec) {
+    bool kill = false;
+    for (auto i = __sessions->begin(); i != __sessions->end(); i++) {
+        if (!(*i)->isLive()) {
+            __sessions->erase(i);
+            kill = true;
+            break;
+        }
+    }
+    if (kill) {
+        __timer_kill->expires_from_now(boost::posix_time::seconds(0));
+        __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession, shared_from_this()));
+    }
+    else {
+        __timer_kill->expires_from_now(boost::posix_time::seconds(__TIME_DEAD_SESSION));
+        __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession, shared_from_this()));
+    }
 }
 void Listener::__onAccept(beast::error_code ec, tcp::socket socket) {
     if (ec)
@@ -153,14 +185,16 @@ void Listener::__onAccept(beast::error_code ec, tcp::socket socket) {
     else
     {
         // Create the session and run it
-        std::make_shared<Session>(
-            std::move(socket),
-            __ctx,
-            __doc_root)->run();
+        __sessions->push_back(std::make_shared<HTTPS_Server::Session>(
+                                std::move(socket),
+                                __ctx,
+                                __doc_root,
+                                __sessions_mqtt, __sessions_marussia));
+        __sessions->back()->run();
     }
 
     // Accept another connection
-    __doAccept();
+    __acceptor.async_accept(net::make_strand(__ioc), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
 }
 
 http::message_generator Session::__handleRequest()

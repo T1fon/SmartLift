@@ -17,6 +17,7 @@
 #include <thread>
 #include <vector>
 #include <string>
+#include "../WorkerServer/WorkerServer.hpp"
 
 namespace HTTPS_Server {
 
@@ -44,11 +45,19 @@ namespace HTTPS_Server {
         std::shared_ptr<std::string const> __doc_root;
         http::request<http::string_body> __req;
         json::stream_parser __parser;
+        bool __is_live = false;
+
+        std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_mqtt;
+        std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_marussia;
+
     public:
         explicit Session(tcp::socket&& socket,
             ssl::context& ctx,
-            std::shared_ptr<std::string const> const& doc_root);
+            std::shared_ptr<std::string const> const& doc_root,
+            std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
+            std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia);
         void run();
+        bool isLive();
     private:
         void __onRun();
         void __onHandshake(beast::error_code ec);
@@ -70,19 +79,27 @@ namespace HTTPS_Server {
 
     class Listener : public std::enable_shared_from_this<Listener>
     {
+        const int __TIME_DEAD_SESSION = 30;
         net::io_context& __ioc;
         ssl::context& __ctx;
         tcp::acceptor __acceptor;
         std::shared_ptr<std::string const> __doc_root;
+        std::shared_ptr<std::vector<std::shared_ptr<HTTPS_Server::Session>>> __sessions;
+        std::shared_ptr<boost::asio::deadline_timer> __timer_kill;
+
+        std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_mqtt;
+        std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_marussia;
     public:
         Listener( net::io_context& ioc,
                   ssl::context& ctx,
                   tcp::endpoint endpoint,
-                  std::shared_ptr<std::string const> const& doc_root);
+                  std::shared_ptr<std::string const> const& doc_root,
+                  std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
+                  std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia);
         void run();
     
     private:
-        void __doAccept();
         void __onAccept(beast::error_code ec, tcp::socket socket);
+        void __killSession(beast::error_code ec);
     };
 }
