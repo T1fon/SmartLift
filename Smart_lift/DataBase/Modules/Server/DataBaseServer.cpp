@@ -22,7 +22,9 @@ void DataBase::start()
 {
 	__log->writeLog(0, "DataBase", "Connect_with_DataBase");
 	__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
-	__socket->async_connect(*__endPoint, boost::bind(&DataBase::__reqAutentification, shared_from_this(), boost::placeholders::_1));
+	//__socket->async_connect(*__endPoint, boost::bind(&DataBase::__reqAutentification, shared_from_this(), boost::placeholders::_1));
+	__reqAutentification();
+
 }
 
 void DataBase::stop()
@@ -35,9 +37,9 @@ void DataBase::stop()
 	__log->writeTempLog(0, "DataBase", "End_Connect");
 }
 
-void DataBase::__reqAutentification(const boost::system::error_code& eC)
+void DataBase::__reqAutentification()
 {
-	if (eC)
+	/*if (eC)
 	{
 		cerr << eC.message() << endl;
 		Sleep(2000);
@@ -45,7 +47,7 @@ void DataBase::__reqAutentification(const boost::system::error_code& eC)
 		__log->writeLog(3, "DataBase", "Error_connect");
 		__log->writeTempLog(3, "DataBase", "Error_connect");
 		return;
-	}
+	}*/
 	__bufSend = "";
 	__socket->async_receive(net::buffer(__bufRecieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 }
@@ -89,7 +91,8 @@ void DataBase::__connectAnalize(const boost::system::error_code& eC, size_t byte
 		__socket->async_send(net::buffer(__bufSend, __bufSend.size()), boost::bind(&DataBase::__resAutentification, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 		if (__flagWrongConnect)
 		{
-			stop();
+			this->stop();
+			this->start();
 			__flagWrongConnect = false;
 		}
 		__log->writeTempLog(0, "DataBase", "send_answer_to_connect");
@@ -256,13 +259,13 @@ string DataBase::__checkCommand(char* __bufRecieve, size_t bytesRecieve)
 void DataBase::__makePing()
 {
 	__bufSend.clear();
-	__bufSend = boost::json::serialize(json_formatter::database::response::ping("Data_Base"));
+	__bufSend = boost::json::serialize(json_formatter::database::response::ping(__Name));
 }
 
 void DataBase::__makeDisconnect()
 {
 	__bufSend.clear();
-	__bufSend = boost::json::serialize(json_formatter::database::response::disconnect("Data_Base"));
+	__bufSend = boost::json::serialize(json_formatter::database::response::disconnect(__Name));
 	__flagWrongConnect = true;
 }
 
@@ -297,7 +300,7 @@ void DataBase::__makeQuery()
 	}
 
 	__bufSend.clear();
-	__bufSend =boost::json::serialize(json_formatter::database::response::query("Data_base", json_formatter::database::QUERY_METHOD::SELECT, response));
+	__bufSend = boost::json::serialize(json_formatter::database::response::query(__Name, json_formatter::database::QUERY_METHOD::SELECT, response));
 
 
 
@@ -319,7 +322,7 @@ void DataBase::__checkConnect(string login, string password)
 	int flag = sqlite3_exec(__dB, __query.c_str(), __connection,(void*)&__Answer,NULL);
 	if (flag != SQLITE_OK)
 	{
-		__bufSend = boost::json::serialize(json_formatter::database::response::connect("Data_Base", json_formatter::ERROR_CODE::CONNECT, "User not found"));
+		__bufSend = boost::json::serialize(json_formatter::database::response::connect(__Name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
 		__flagWrongConnect = true;
 	}
 	else
@@ -327,11 +330,11 @@ void DataBase::__checkConnect(string login, string password)
 		vector<string> __password = __Answer.at(login);
 		if (__password[0] == password)
 		{
-			__bufSend = boost::json::serialize(json_formatter::database::response::connect("Data_Base"));
+			__bufSend = boost::json::serialize(json_formatter::database::response::connect(__Name));
 		}
 		else
 		{
-			__bufSend = boost::json::serialize(json_formatter::database::response::connect("Data_Base", json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
+			__bufSend = boost::json::serialize(json_formatter::database::response::connect(__Name, json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
 			__flagWrongConnect = true;
 		}
 	}

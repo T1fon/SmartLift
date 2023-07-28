@@ -29,7 +29,7 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Client "${MODULES}/ClientMtW/Client.hpp" "${MODULES}/ClientMtW/Client.cpp")
+set(MOD_Client "${MODULES}/ClientMtW/Client.hpp" "${MODULES}/ClientMtW/Client.cpp" "${MODULES}/ClientMtW/newClient.cpp" "${MODULES}/ClientMtW/newClient.hpp")
 set(SOURCE_MODULES ${MOD_Client})
 add_executable (Vorker "Vorker.cpp" "Vorker.hpp" ${MOD_Client})
 

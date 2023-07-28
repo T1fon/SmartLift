@@ -53,7 +53,7 @@ private:
 	shared_ptr<Log> __log;
 	bool __flagWrongConnect = false;
 
-	void __reqAutentification(const boost::system::error_code &eC);
+	void __reqAutentification();
 	void __resAutentification(const boost::system::error_code& eC, size_t bytesSend);
 	void __connectAnalize(const boost::system::error_code& eC, size_t bytesRecieve);
 	void __waitCommand(const boost::system::error_code& eC, size_t bytesRecieve);
