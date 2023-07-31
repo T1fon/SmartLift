@@ -1,3 +1,5 @@
+#pragma once
+
 #include <boost/lambda2.hpp>
 #include <boost/asio.hpp>
 #include <boost/json.hpp>
@@ -30,7 +32,7 @@ using tcp = boost::asio::ip::tcp;
 class Client : public enable_shared_from_this<Client>
 {
 public:
-	Client(string ip, string port, net::io_context& ioc, queue<string> message);//добавить очередь из запросов
+	Client(string ip, string port, net::io_context& ioc, queue<string> message);
 	~Client();
 	void start();
 	void stop();
@@ -52,13 +54,13 @@ private:
 	boost::json::value __bufJsonRecive;
 	boost::json::stream_parser __parser;
 
-	enum __CHECK_STATUS
+	enum __CHECK_STATUS 
 	{
 		SUCCESS = 1,
 		FAIL
 	};
 
-	__CHECK_STATUS __checkSend(const size_t& count_send_byte, size_t& temp_send_byte, __handler_t&& handler);
-	__CHECK_STATUS __checkJson(const size_t& countReciveByte, __handler_t&& handler);
+	__CHECK_STATUS __reciveCheck(const size_t &count_recive_byte,  __handler_t &&handler);
+	__CHECK_STATUS __sendCheck(const size_t &count_send_byte,size_t &temp_send_byte, __handler_t &&handler);
 
 };

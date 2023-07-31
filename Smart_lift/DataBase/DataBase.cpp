@@ -1,24 +1,34 @@
-#include "boost/asio.hpp"
-#include<iostream>
-#include "Modules/Server/DataBaseServer.hpp"
+#include "DataBase.hpp"
 
-using namespace std;
 
-int main(int argc, char** argv)
+ServerDataBase::ServerDataBase()
 {
-	setlocale(LC_ALL, "Russian");
-	string configFile = "";
-	for (size_t i = 0; i < argc; i++)
-	{
-		string flags = argv[i];
-		{
-			if (flags == "-cf" || flags == "--config_file")
-			{
-				configFile = argv[++i];
-			}
-		}
-	}
-	boost::asio::io_context	ioc;
-	Server s(ioc, "");
-	ioc.run();
+	__ioc =  make_shared<boost::asio::io_context>(__countThreads);
+	__server = make_shared<Server>(__ioc, "");
 }
+
+ServerDataBase::~ServerDataBase()
+{
+	stop();
+}
+
+void ServerDataBase::start()
+{
+	__server->run();
+
+	std::vector<std::thread> v;
+	v.reserve(__countThreads - 1);
+	for (auto i = __countThreads - 1; i > 0; --i)
+		v.emplace_back(
+			[this]
+			{
+				__ioc->run();
+			});
+	__ioc->run();
+}
+
+void ServerDataBase::stop()
+{
+	__server->stop();
+}
+

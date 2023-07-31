@@ -31,13 +31,13 @@ set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
 set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
-set(MOD_FILES "${GLOBAL_MODULES}/Log/Log.hpp" "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
-set(MOD_Libraries "${MODULES}/Libraries/shell.c" "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
 set(MOD_Server "${MODULES}/Server/DataBaseServer.cpp" "${MODULES}/Server/DataBaseServer.hpp")
+set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
+set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
+set(MOD_Libraries "${MODULES}/Libraries/shell.c" "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
 set(SOURCE_LIBRARY ${MOD_Libraries})
-set(SOURCE_MODULES ${MOD_JSON} ${MOD_FILES})
-set(SOURCE_SERVER ${MOD_Server})
-add_executable (DataBaseServer "DataBase.cpp"  ${MOD_Libraries} ${SOURCE_MODULES} ${SOURCE_SERVER})
+set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_Server})
+add_executable (ServerDB "main.cpp" "DataBase.cpp" "DataBase.hpp" ${MOD_Libraries} ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -50,20 +50,22 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	message(CONFIG " BOOST_INCLUDEDIR ${Boost_INCLUDE_DIRS}")
 
 
-	set_property(TARGET DataBaseServer PROPERTY CXX_STANDARD 20)
+	set_property(TARGET ServerDB PROPERTY CXX_STANDARD 20)
 
-	target_include_directories(DataBaseServer PUBLIC ${Boost_INCLUDE_DIRS})
-	target_include_directories(DataBaseServer PUBLIC ${OPENSSL_INCLUDE_DIR})
+	target_include_directories(ServerDB PUBLIC ${Boost_INCLUDE_DIRS})
+	target_include_directories(ServerDB PUBLIC ${OPENSSL_INCLUDE_DIR})
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
 	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 
 
-	target_link_libraries(DataBaseServer PUBLIC Boost::thread)
-	target_link_libraries(DataBaseServer PUBLIC Boost::json)
-	target_link_libraries(DataBaseServer PUBLIC OpenSSL::SSL)
-	target_link_libraries(DataBaseServer PUBLIC OpenSSL::Crypto)
+	target_link_libraries(ServerDB PUBLIC Boost::thread)
+	target_link_libraries(ServerDB PUBLIC Boost::json)
+	target_link_libraries(ServerDB PUBLIC OpenSSL::SSL)
+	target_link_libraries(ServerDB PUBLIC OpenSSL::Crypto)
+
+
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
 	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")

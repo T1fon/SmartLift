@@ -10,7 +10,7 @@ add_subdirectory ("Smart_lift")
 
 project ("Vorker")
 
-add_subdirectory("Smart_lift/Vorker")
+add_subdirectory("Smart_lift/Worker")
 
 project("DataBase")
 

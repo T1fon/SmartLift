@@ -15,7 +15,8 @@ else()
 	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 
 
-	set(MODULES "Modules")
+	set(GLOBAL_MODULES "GlobalModules")
+
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
@@ -29,9 +30,11 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
+set(MOD_Client "${GLOBAL_MODULES}/Client/Client.hpp" "${GLOBAL_MODULES}/Client/Client.cpp")
+set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
+set(SOURCE_MODULES ${MOD_Client} ${MOD_JSON})
 
-
-add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h")
+add_executable (Smart_lift "Smart_lift.cpp" "Smart_lift.h" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -51,11 +54,15 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 
 
 	target_link_libraries(Smart_lift PUBLIC Boost::thread)
 	target_link_libraries(Smart_lift PUBLIC OpenSSL::SSL)
 	target_link_libraries(Smart_lift PUBLIC OpenSSL::Crypto)
+	target_link_libraries(Smart_lift PUBLIC Boost::json)
+
+	target_include_directories(Smart_lift PUBLIC ${GLOBAL_MODULES})
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
 	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")

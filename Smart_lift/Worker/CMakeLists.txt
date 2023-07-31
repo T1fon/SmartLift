@@ -16,6 +16,7 @@ else()
 
 
 	set(MODULES "Modules")
+	set(GLOBAL_MODULES "../GlobalModules")
 endif()
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
@@ -29,9 +30,10 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Client "${MODULES}/ClientMtW/Client.hpp" "${MODULES}/ClientMtW/Client.cpp" "${MODULES}/ClientMtW/newClient.cpp" "${MODULES}/ClientMtW/newClient.hpp")
-set(SOURCE_MODULES ${MOD_Client})
-add_executable (Vorker "Vorker.cpp" "Vorker.hpp" ${MOD_Client})
+#set(MOD_Client "${MODULES}/ClientMtW/newClient.cpp" "${MODULES}/ClientMtW/newClient.hpp")
+set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp")
+#set(SOURCE_MODULES ${MOD_Client})
+add_executable (Vorker "Worker.cpp" "Worker.hpp" ${MOD_JSON})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)

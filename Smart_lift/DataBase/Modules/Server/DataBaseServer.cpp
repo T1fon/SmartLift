@@ -1,7 +1,10 @@
-#include "DataBaseServer.hpp"
+ï»¿#include "DataBaseServer.hpp"
 
-DataBase::DataBase(shared_ptr<Log> lg, shared_ptr<tcp::socket> socket): __socket(move(socket))
+
+DataBase::DataBase(shared_ptr<Log> lg, tcp::socket sock)
 {
+	cerr << "11" << endl;
+	__socket = make_shared<tcp::socket>(move(sock));
 	__log = lg;
 	__bufRecieve = new char[BUF_SIZE + 1];
 
@@ -17,9 +20,13 @@ DataBase::~DataBase()
 	delete[] __bufRecieve;
 }
 
-
+shared_ptr<tcp::socket> DataBase::getSocket()
+{
+	return __socket;
+}
 void DataBase::start()
 {
+	cerr << 12 << endl;
 	__log->writeLog(0, "DataBase", "Connect_with_DataBase");
 	__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
 	//__socket->async_connect(*__endPoint, boost::bind(&DataBase::__reqAutentification, shared_from_this(), boost::placeholders::_1));
@@ -36,6 +43,7 @@ void DataBase::stop()
 	__log->writeLog(0, "DataBase", "End_Connect");
 	__log->writeTempLog(0, "DataBase", "End_Connect");
 }
+
 
 void DataBase::__reqAutentification()
 {
@@ -67,7 +75,7 @@ void DataBase::__connectAnalize(const boost::system::error_code& eC, size_t byte
 	{
 		__parser.write(__bufRecieve, bytesRecieve);
 	}
-	catch(exception& e)
+	catch (exception& e)
 	{
 		cerr << e.what() << endl;
 	}
@@ -96,7 +104,7 @@ void DataBase::__connectAnalize(const boost::system::error_code& eC, size_t byte
 			__flagWrongConnect = false;
 		}
 		__log->writeTempLog(0, "DataBase", "send_answer_to_connect");
-		
+
 	}
 	catch (exception& e)
 	{
@@ -198,6 +206,11 @@ void DataBase::__waitCommand(const boost::system::error_code& eC, size_t bytesRe
 		__log->writeTempLog(0, "DataBase", "Make_error_response");
 		__makeError();
 	}
+	else if (command == "connect")
+	{
+		__log->writeTempLog(0, "DataBase", "Start_connect");
+		__resAutentification(eC, bytesRecieve);
+	}
 	__log->writeLog(0, "DataBase", "Send_response_command");
 	__log->writeTempLog(0, "DataBase", "Send_response_command");
 	__socket->async_send(net::buffer(__bufSend, __bufSend.size()), boost::bind(&DataBase::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
@@ -235,25 +248,29 @@ void DataBase::__sendCommand(const boost::system::error_code& eC, size_t bytesSe
 
 string DataBase::__checkCommand(char* __bufRecieve, size_t bytesRecieve)
 {
-		if (__bufJsonRecieve.at("target").as_string() == "ping")
-		{
-			return "ping";
-		}
-		else if (__bufJsonRecieve.at("target").as_string() == "disconnect")
-		{
-			return "disconnect";
-		}
-		else if (__bufJsonRecieve.at("target").as_string() == "DB_query")
-		{
-			//return method to string
-		}
-		else
-		{
-			__log->writeTempLog(2, "DataBase", "No_command");
-			__errorWhat.clear();
-			__errorWhat = "non-existent command";
-			return "error";//no command
-		}
+	if (__bufJsonRecieve.at("target").as_string() == "ping")
+	{
+		return "ping";
+	}
+	else if (__bufJsonRecieve.at("target").as_string() == "disconnect")
+	{
+		return "disconnect";
+	}
+	else if (__bufJsonRecieve.at("target").as_string() == "DB_query")
+	{
+		//return method to string
+	}
+	else if (__bufJsonRecieve.at("target").as_string() == "connect")
+	{
+		return "connect";
+	}
+	else
+	{
+		__log->writeTempLog(2, "DataBase", "No_command");
+		__errorWhat.clear();
+		__errorWhat = "non-existent command";
+		return "error";//no command
+	}
 }
 
 void DataBase::__makePing()
@@ -308,7 +325,7 @@ void DataBase::__makeQuery()
 void DataBase::__makeError()
 {
 	__bufSend.clear();
-	//__bufSend = boost::json::serialize(json_formatter::database::) //íåò êîìàíäû
+	//__bufSend = boost::json::serialize(json_formatter::database::) //Ã­Ã¥Ã² ÃªÃ®Ã¬Ã Ã­Ã¤Ã»
 }
 
 void DataBase::__checkConnect(string login, string password)
@@ -319,7 +336,7 @@ void DataBase::__checkConnect(string login, string password)
 	__bufSend.clear();
 	map<string, vector<string>> __Answer;
 	map<string, vector<string>> it;
-	int flag = sqlite3_exec(__dB, __query.c_str(), __connection,(void*)&__Answer,NULL);
+	int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__Answer, NULL);
 	if (flag != SQLITE_OK)
 	{
 		__bufSend = boost::json::serialize(json_formatter::database::response::connect(__Name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
@@ -356,10 +373,12 @@ int DataBase::__connection(void* Answer, int argc, char** argv, char** azColName
 	return 0;
 }
 
-Server::Server(net::io_context& io_context, string nameConfigFile)
+Server::Server(shared_ptr<net::io_context> io_context, string nameConfigFile)
 {
-	__logServer = make_shared<Log>("", "./", "DataBase");
-	__config = make_shared<Config>(__logServer, "./", "",nameConfigFile);
+	__ioc = io_context;
+	__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
+	__logServer = make_shared<Log>("Log/", "./", "DataBase");
+	__config = make_shared<Config>(__logServer, "./", "", nameConfigFile);
 	__config->readConfig();
 	__configInfo = __config->getConfigInfo();
 	if (__configInfo.size() == 0)
@@ -378,28 +397,44 @@ Server::Server(net::io_context& io_context, string nameConfigFile)
 			__configInfo.at(CONFIG_FIELDS.at(i));
 		}
 	}
-	catch (exception& e) 
+	catch (exception& e)
 	{
 		__logServer->writeLog(1, "DataBase", e.what());
 		return;
 	}
 	string port = __configInfo.at("port");
-	__acceptor = make_shared<tcp::acceptor>(io_context, tcp::endpoint(tcp::v4(), stoi(port)));
-	
+	cerr << port << endl;
+	__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
+
+}
+
+void Server::run()
+{
 	__doAccept();
+}
+void Server::stop() 
+{
+	for (size_t i = 0, length = __sessions->size(); i < length; i++) {
+		__sessions->back()->stop();
+	}
+	__sessions->clear();
 }
 
 void Server::__doAccept()
 {
-	__acceptor->async_accept(
-		[this](boost::system::error_code ec, tcp::socket socket)
+	cerr << "01" << endl;
+	__acceptor->async_accept([this](boost::system::error_code error, boost::asio::ip::tcp::socket socket)
 		{
-			if (!ec)
-			{
-				?shared_ptr<tcp::socket> sock = &socket
-				make_shared<DataBase>(__logServer, sock);
+			if (error) {
+				cerr << error.message() << endl;
+				__doAccept();
 			}
+
+			__sessions->push_back(std::make_shared<DataBase>(__logServer, move(socket)));
+
+			__sessions->back()->start();
 			__doAccept();
-		});
-		
+		}
+	);
 }
+

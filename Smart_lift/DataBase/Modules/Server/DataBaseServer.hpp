@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 
 #include "../Libraries/sqlite3.h"
 #include "../../../GlobalModules/JSONFormatter/JSONFormatter.hpp"
@@ -24,8 +24,9 @@
 #include <ctime>
 #include <map>
 #include <list>
+#include <queue>
 
-#define DB_WAY "..\\..\\DataBaseFile\\SmartLiftBase.db"
+#define DB_WAY "SmartLiftBase.db"
 
 using namespace std;
 namespace beast = boost::beast;
@@ -33,12 +34,12 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-void fail(beast::error_code ErrCode, char const* what);
 
 class DataBase : public enable_shared_from_this<DataBase>
 {
 private:
-	const string __Name = "DataBase";
+
+	const string __Name = "Data_base";
 	shared_ptr<tcp::endpoint>__endPoint;
 	shared_ptr<tcp::socket>__socket;
 
@@ -66,19 +67,22 @@ private:
 	void __makeError();
 	void __checkConnect(string login, string password);
 	static int __connection(void* notUsed, int argc, char** argv, char** azColName);
-	//1 не используется, 2 номер результата, 3 значение в массиве, 4 именнует коллонки?(если правильно перевел и понял)
+
 
 public:
-	DataBase(shared_ptr<Log> lg, shared_ptr<tcp::socket> socket);
+	DataBase(shared_ptr<Log> lg, tcp::socket sock);
 	void start();
 	void stop();
 	~DataBase();
+	shared_ptr<tcp::socket> getSocket();
 };
 
-class Server
+class Server : public enable_shared_from_this<Server>
 {
 public:
-	Server(boost::asio::io_context& io_context, string nameConfigFile);
+	Server(shared_ptr<net::io_context> io_context, string nameConfigFile);
+	void run();
+	void stop();
 private:
 	shared_ptr<Log> __logServer;
 	shared_ptr<Config> __config;
@@ -86,6 +90,8 @@ private:
 	static const int CONFIG_NUM_FIELDS = 1;
 	vector<string> CONFIG_FIELDS = { "port" };
 	shared_ptr<tcp::acceptor> __acceptor;
+	shared_ptr<net::io_context> __ioc;
+	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;
 
 	void __doAccept();
 };
