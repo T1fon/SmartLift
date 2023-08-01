@@ -50,12 +50,13 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_include_directories(MainServer PUBLIC ${OPENSSL_INCLUDE_DIR})
 	target_include_directories(MainServer PUBLIC ${MQTT_PATH})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic locale REQUIRED)
 	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 
 	target_link_libraries(MainServer PUBLIC Boost::thread)
 	target_link_libraries(MainServer PUBLIC Boost::json)
+	target_link_libraries(MainServer PUBLIC Boost::locale)
 	target_link_libraries(MainServer PUBLIC OpenSSL::SSL)
 	target_link_libraries(MainServer PUBLIC OpenSSL::Crypto)
 	

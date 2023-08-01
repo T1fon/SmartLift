@@ -78,8 +78,6 @@ namespace worker_server {
         virtual void _sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) override;
         virtual void _reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) override;
         virtual void _commandAnalize();
-        virtual void _startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback);
-        virtual void _startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
         virtual void _ping(const boost::system::error_code& error) override;
         virtual void _analizePing() override;
         virtual void _deadPing(const boost::system::error_code& error) override;
@@ -90,6 +88,8 @@ namespace worker_server {
         virtual void start() override;
         virtual void stop() override;
         virtual bool isLive() override;
+        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback);
+        virtual void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
     };
     /*-----------------------------------------------------------------------------------*/
     class SessionMQTT : public Session {
@@ -97,7 +97,6 @@ namespace worker_server {
         void __mqttMessage();
     protected:
         virtual void _commandAnalize() override;
-        virtual void _startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) override;
     public:
         struct move_lift_t {
             std::string station_id = "";
@@ -106,6 +105,7 @@ namespace worker_server {
         };
         SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~SessionMQTT();
+        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) override;
     };
 
     /*-----------------------------------------------------------------------------------*/
@@ -116,7 +116,6 @@ namespace worker_server {
         void __moveLift();
     protected:
         virtual void _commandAnalize() override;
-        void _startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
     public:
         struct marussia_station_request_t {
             std::string station_id = "";
@@ -124,6 +123,7 @@ namespace worker_server {
         };
         SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~SessionMarussia();
+        void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
     };
 
     /*-----------------------------------------------------------------------------------*/

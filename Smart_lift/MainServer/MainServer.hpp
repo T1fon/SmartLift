@@ -8,6 +8,8 @@
 #include "Modules/WorkerServer/WorkerServer.hpp"
 #include "../GlobalModules/Log/Log.hpp"
 #include "../GlobalModules/Config/Config.hpp"
+#include "Modules/HTTPSServer/HTTPSServer.hpp"
+#include "Modules/SSLSertificateLocalhost/Sertificate.hpp"
 
 using namespace std;
 
@@ -23,10 +25,13 @@ private:
 	shared_ptr<boost::asio::ssl::context> __ssl_ctx;
 	short __count_threads;
 
-	shared_ptr<worker_server::Server> __server_mqtt;
 	map<string, string> __configuration;
 	shared_ptr<Log> __logger;
 	shared_ptr<Config> __configer;
+
+	shared_ptr<https_server::Listener> __server_https;
+	shared_ptr<worker_server::Server> __server_w_mqtt;
+	shared_ptr<worker_server::Server> __server_w_marussia;
 
 public:
 	enum PROCESS_CODE {

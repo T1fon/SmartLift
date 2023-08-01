@@ -1,9 +1,9 @@
 #include "HTTPSServer.hpp"
 
-using namespace HTTPS_Server;
+using namespace https_server;
 
 //------------------------------------------------------------------------------
-void HTTPS_Server::fail(beast::error_code ec, char const* what) {
+void https_server::fail(beast::error_code ec, char const* what) {
     if (ec == net::ssl::error::stream_truncated) { return; }
 
     std::cerr << what << ": " << ec.message() << "\n";
@@ -11,10 +11,9 @@ void HTTPS_Server::fail(beast::error_code ec, char const* what) {
 //------------------------------------------------------------------------------
 
 Session::Session(tcp::socket&& socket,
-    ssl::context& ctx,
-    std::shared_ptr<std::string const> const& doc_root,
+    ssl::context& ssl_ctx,
     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
-    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): __stream(std::move(socket), ctx), __doc_root(doc_root)
+    std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): __stream(std::move(socket), ssl_ctx)
 {
     __sessions_marussia = sessions_marussia;
     __sessions_mqtt = sessions_mqtt;
@@ -56,7 +55,8 @@ void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred)
     if (ec) { return fail(ec, "read"); }
 
     // Send the response
-    __sendResponse(__handleRequest());
+    //__sendResponse(__analizeRequest());
+    __analizeRequest();
 }
 void Session::__sendResponse(http::message_generator&& msg) {
     bool keep_alive = msg.keep_alive();
@@ -102,59 +102,23 @@ bool Session::isLive() {
 
 //------------------------------------------------------------------------------
 
-Listener::Listener( net::io_context& ioc,
-                    ssl::context& ctx,
-                    tcp::endpoint endpoint,
-                    std::shared_ptr<std::string const> const& doc_root, 
+Listener::Listener( net::io_context& io_ctx,
+                    ssl::context& ssl_ctx,
+                    unsigned short port,
                     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
                     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): 
-                                                                         __ioc(ioc),
-                                                                         __ctx(ctx),
-                                                                         __acceptor(ioc),
-                                                                         __doc_root(doc_root)
+                                                                         __io_ctx(io_ctx),
+                                                                         __ssl_ctx(ssl_ctx)
 {
-    beast::error_code ec;
-
-    // Open the acceptor
-    __acceptor.open(endpoint.protocol(), ec);
-    if (ec)
-    {
-        fail(ec, "open");
-        return;
-    }
-
-    // Allow address reuse
-    __acceptor.set_option(net::socket_base::reuse_address(true), ec);
-    if (ec)
-    {
-        fail(ec, "set_option");
-        return;
-    }
-
-    // Bind to the server address
-    __acceptor.bind(endpoint, ec);
-    if (ec)
-    {
-        fail(ec, "bind");
-        return;
-    }
-
-    // Start listening for connections
-    __acceptor.listen(
-        net::socket_base::max_listen_connections, ec);
-    if (ec)
-    {
-        fail(ec, "listen");
-        return;
-    }
+    __acceptor = make_shared<tcp::acceptor>(__io_ctx, tcp::endpoint(tcp::v4(), port));
 
     __sessions_mqtt = sessions_mqtt;
     __sessions_marussia = sessions_marussia;
-    __timer_kill = std::make_shared<boost::asio::deadline_timer>(ioc);
-    __sessions = std::make_shared<std::vector<std::shared_ptr<HTTPS_Server::Session>>>();
+    __timer_kill = std::make_shared<boost::asio::deadline_timer>(io_ctx);
+    __sessions = std::make_shared<std::vector<std::shared_ptr<https_server::Session>>>();
 }
-void Listener::run() {
-    __acceptor.async_accept(net::make_strand(__ioc), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
+void Listener::start() {
+    __acceptor->async_accept(beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
     __timer_kill->expires_from_now(boost::posix_time::seconds(__TIME_DEAD_SESSION));
     __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession,shared_from_this()));
 }
@@ -185,24 +149,23 @@ void Listener::__onAccept(beast::error_code ec, tcp::socket socket) {
     else
     {
         // Create the session and run it
-        __sessions->push_back(std::make_shared<HTTPS_Server::Session>(
+        __sessions->push_back(std::make_shared<https_server::Session>(
                                 std::move(socket),
-                                __ctx,
-                                __doc_root,
+                                __ssl_ctx,
                                 __sessions_mqtt, __sessions_marussia));
         __sessions->back()->run();
     }
 
     // Accept another connection
-    __acceptor.async_accept(net::make_strand(__ioc), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
+    __acceptor->async_accept(net::make_strand(__io_ctx), beast::bind_front_handler(&Listener::__onAccept, shared_from_this()));
 }
-
-http::message_generator Session::__handleRequest()
+void Session::__analizeRequest()
 {
     std::cout << std::endl << __req.method() << std::endl << std::endl;
     if (__req.method() != http::verb::post && __req.method() != http::verb::options) {
         __req = {};
-        return __badRequest("Method not equal OPTIONS OR POST\n");
+        __sendResponse(__badRequest("Method not equal OPTIONS OR POST\n"));
+        return;
     }
 
     if (__req.method() == http::verb::options) {
@@ -218,14 +181,13 @@ http::message_generator Session::__handleRequest()
         res.prepare_payload();
         res.keep_alive(true);
         __req = {};
-        return res;
+        __sendResponse((http::message<false,http::string_body,http::fields>)res);
+        return;
     }
 
     //POST
     beast::error_code err_code;
-    json::value body_request;
-    json::object body_response;
-
+    
     std::cout << "REQUEST" << std::endl;
     std::cout << "Base: " << __req.base() << std::endl;
     std::cout << "Body: " << __req.body() << std::endl;
@@ -235,41 +197,51 @@ http::message_generator Session::__handleRequest()
         __parser.write(__req.body(), err_code);
         if (err_code) {
             __req = {};
-            return __badRequest("parse JSON error");
+            __sendResponse(__badRequest("parse JSON error"));
+            return;
         }
         if (!__parser.done()) {
             __req = {};
-            return __badRequest("JSON not full");
+            __sendResponse(__badRequest("JSON not full"));
+            return;
         }
     }
     catch (std::bad_alloc const& e) {
         __req = {};
-        return __badRequest(std::string("Bad alloc JSON: ") + e.what());
+        __sendResponse(__badRequest(std::string("Bad alloc JSON: ") + e.what()));
+        return;
     }
-    body_request = __parser.release();
+    __body_request = __parser.release();
     
     //проверки кому отправить
-
+    if (__sessions_marussia->size() == 0) {
+        cerr << "__session_marussia size = 0" << endl;
+        __callbackWorkerMarussia({}, {});
+        return;
+    }
+    cout << "size " << __sessions_marussia->size() << endl;
+    __sessions_marussia->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MARUSSIA::MARUSSIA_STATION_REQUEST, (void*)&__body_request, 
+                                            boost::bind(&Session::__callbackWorkerMarussia, shared_from_this(), _1, _2));
     //-----------------------
 
     //тест
-
-    body_response["response"] =
+    return;
+   /* __body_response["response"] =
     {
-        {"text", std::string("eto ") + body_request.at("request").at("original_utterance").as_string().c_str()},
+        {"text", std::string("eto ") + __body_request.at("request").at("original_utterance").as_string().c_str()},
         {"tts", "AAAA"},
         //{"buttons", {}},
         {"end_session", false},
         //{"card", {}},
         //{"commands", {}}
     };
-    body_response["session"] =
+    __body_response["session"] =
     {
-        {"session_id", body_request.at("session").at("session_id")},
-        {"user_id", body_request.at("session").at("application").at("application_id")},
-        {"message_id", body_request.at("session").at("message_id").as_int64()}
+        {"session_id", __body_request.at("session").at("session_id")},
+        {"user_id", __body_request.at("session").at("application").at("application_id")},
+        {"message_id", __body_request.at("session").at("message_id").as_int64()}
     };
-    body_response["version"] = {"1.0"};
+    __body_response["version"] = {"1.0"};
     
     // Respond to POST request
     http::response<http::string_body> res{
@@ -283,14 +255,14 @@ http::message_generator Session::__handleRequest()
     //res.content_length(.size());
     
     res.keep_alive(__req.keep_alive());
-    res.body() = json::serialize(body_response);
+    res.body() = json::serialize(__body_response);
     res.prepare_payload();
     std::cout << "RESPONSE" << std::endl;
     std::cout << "Base: " << res.base() << std::endl;
     std::cout << "Body: " << res.body() << std::endl;
 
-    __req = {};
-    return res;
+    __req = {};*/
+    
 }
 http::message_generator Session::__badRequest(beast::string_view why) {
     std::cout << "ERROR " << why << std::endl;
@@ -301,4 +273,143 @@ http::message_generator Session::__badRequest(beast::string_view why) {
     res.body() = std::string(why);
     res.prepare_payload();
     return res;
+}
+void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::json::value data) {
+    boost:json::value target;
+    boost::json::object response_data = {};
+    boost::locale::generator gen;
+    cout << "__callbackWorkerMarussia : " << data << endl;
+
+    try {
+        target = data.at("target");
+    }
+    catch (exception& e) {
+        cout << "__callbackWorkerMarussia [target]: " << e.what();
+        target = "error";
+    };
+    /*------------*/
+    try {
+        if (target == "static_message") {
+            response_data = data.at("response_body").as_object();
+        }
+        else if (target == "move_lift") {
+            if (__sessions_mqtt->size() == 0) {
+                throw exception("session mqtt size = 0");
+            }
+            __sessions_mqtt->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MQTT::MOVE_LIFT, (void*)&__body_request,
+                boost::bind(&Session::__callbackWorkerMQTT, shared_from_this(), _1, _2));
+            return;
+        }
+        else {
+            target = "error";
+        }
+    }
+    catch (exception& e) {
+        cerr << "__callbackWorkerMarussia [target analize]: " << e.what() << endl;
+        target = "error";
+    };
+    /*------------*/
+    if(target == "error"){
+        /*ошибка обработки запроса сервер временно недоступен*/
+        /*стандартное сообщение о том что сервер временно недоступен*/
+        u8string text = u8"—ервер временно недоступен, приношу свои извинени€, € работаю над устранением проблемы";
+        string result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+        response_data =
+        {
+            {"text", result_text},
+            {"tts", result_text},
+            {"end_session", true}, //mb ne nado zakrivat
+        };
+    }
+
+    __constructResponse(response_data);
+}
+void Session::__callbackWorkerMQTT(boost::system::error_code error, boost::json::value data) {
+    boost:json::value target;
+    boost::json::object response_data = {};
+    boost::locale::generator gen;
+    u8string text;
+    string result_text;
+    cout << "__callbackWorkerMQTT : " << data << endl;
+
+    try {
+        target = data.at("target");
+    }
+    catch (exception& e) {
+        cout << "__callbackWorkerMarussia [target]: " << e.what();
+        target = "error";
+    };
+
+    /*------------*/
+    try {
+        if (target == "mqtt_message") {
+            if (data.at("response").at("status") == "success") {
+                text = u8"„ем ещЄ € могу вам помочь?";
+                result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+                
+            }
+            else {
+                text = u8"ѕриношу свои извинени€, утер€на св€зь с лифтом";
+                result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+            }   
+            response_data =
+            {
+                {"text", result_text},
+                {"tts", result_text},
+                {"end_session", false}, //mb ne nado zakrivat
+            };
+        }
+        else {
+            target = "error";
+        }
+    }
+    catch (exception& e) {
+        cerr << "__callbackWorkerMarussia [target analize]: " << e.what() << endl;
+        target = "error";
+    };
+    //string_body a;
+    
+    /*------------*/
+    if (target == "error") {
+        /*ошибка обработки запроса сервер временно недоступен*/
+        /*стандартное сообщение о том что сервер временно недоступен*/
+        text = u8"—ервер временно недоступен, приношу свои извинени€, € работаем над устранением проблемы";
+        result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+        response_data =
+        {
+            {"text", result_text},
+            {"tts", result_text},
+            {"end_session", true}, //mb ne nado zakrivat
+        };
+    }
+
+    __constructResponse(response_data);
+}
+void Session::__constructResponse(boost::json::object response_data) {
+
+    __body_response["response"] = response_data;
+
+    __body_response["session"] =
+    {
+        {"session_id", __body_request.at("session").at("session_id")},
+        {"user_id", __body_request.at("session").at("application").at("application_id")},
+        {"message_id", __body_request.at("session").at("message_id").as_int64()}
+    };
+    __body_response["version"] = { "1.0" };
+
+    http::response<http::string_body> response{
+        std::piecewise_construct,
+            std::make_tuple(""),
+            std::make_tuple(http::status::ok, __req.version()) };
+    response.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+    response.set(http::field::content_type, "application/json; charset=utf-8; locale=ru-RU;");
+    response.set(http::field::access_control_allow_origin, "*");
+    response.keep_alive(__req.keep_alive());
+    response.body() = serialize(__body_response);
+    response.prepare_payload();
+    __req = {};
+    __body_response = {};
+    __body_request = {};
+
+    __sendResponse((http::message<false, http::string_body, http::fields>)response);
 }
