@@ -1,4 +1,4 @@
-﻿#include "DataBaseServer.hpp"
+﻿/*#include "DataBaseServer.hpp"
 
 
 DataBase::DataBase(shared_ptr<Log> lg, tcp::socket sock)
@@ -20,10 +20,6 @@ DataBase::~DataBase()
 	delete[] __bufRecieve;
 }
 
-shared_ptr<tcp::socket> DataBase::getSocket()
-{
-	return __socket;
-}
 void DataBase::start()
 {
 	cerr << 12 << endl;
@@ -55,7 +51,7 @@ void DataBase::__reqAutentification()
 		__log->writeLog(3, "DataBase", "Error_connect");
 		__log->writeTempLog(3, "DataBase", "Error_connect");
 		return;
-	}*/
+	}
 	__bufSend = "";
 	__socket->async_receive(net::buffer(__bufRecieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 }
@@ -209,7 +205,7 @@ void DataBase::__waitCommand(const boost::system::error_code& eC, size_t bytesRe
 	else if (command == "connect")
 	{
 		__log->writeTempLog(0, "DataBase", "Start_connect");
-		__resAutentification(eC, bytesRecieve);
+		__connectAnalize(eC, bytesRecieve);
 	}
 	__log->writeLog(0, "DataBase", "Send_response_command");
 	__log->writeTempLog(0, "DataBase", "Send_response_command");
@@ -318,9 +314,6 @@ void DataBase::__makeQuery()
 
 	__bufSend.clear();
 	__bufSend = boost::json::serialize(json_formatter::database::response::query(__Name, json_formatter::database::QUERY_METHOD::SELECT, response));
-
-
-
 }
 void DataBase::__makeError()
 {
@@ -436,5 +429,5 @@ void Server::__doAccept()
 			__doAccept();
 		}
 	);
-}
+}*/
 

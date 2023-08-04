@@ -30,10 +30,14 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-#set(MOD_Client "${MODULES}/ClientMtW/newClient.cpp" "${MODULES}/ClientMtW/newClient.hpp")
 set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp")
-#set(SOURCE_MODULES ${MOD_Client})
-add_executable (Vorker "Worker.cpp" "Worker.hpp" ${MOD_JSON})
+set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
+set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
+set(MOD_SERVER "${MODULES}/Worker/Worker.hpp")
+set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER})
+
+
+add_executable (Vorker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)
@@ -53,11 +57,13 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 
 
 	target_link_libraries(Vorker PUBLIC Boost::thread)
 	target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
 	target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
+	target_link_libraries(Vorker PUBLIC Boost::json)
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
 	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")

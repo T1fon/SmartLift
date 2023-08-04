@@ -1,20 +1,20 @@
 #pragma once
 
-#include "Modules/Server/DataBaseServer.hpp"
+#include "Modules/Worker/Worker.hpp"
 
-class ServerDataBase: public enable_shared_from_this<ServerDataBase>
+class ServerWorker : public enable_shared_from_this<ServerWorker>
 {
 private:
 	shared_ptr<net::io_context> __ioc;
 	short __countThreads = 2;
 	shared_ptr<Server> __server;
 public:
-	ServerDataBase()
+	ServerWorker()
 	{
 		__ioc = make_shared<boost::asio::io_context>(__countThreads);
 		__server = make_shared<Server>(__ioc, "");
 	}
-	~ServerDataBase()
+	~ServerWorker()
 	{
 		stop();
 	}
