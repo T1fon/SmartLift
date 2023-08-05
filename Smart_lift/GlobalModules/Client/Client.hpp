@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../JSONFormatter/JSONFormatter.hpp"
 #include <boost/lambda2.hpp>
 #include <boost/asio.hpp>
 #include <boost/json.hpp>
@@ -37,7 +38,7 @@ public:
 	}
 	typedef std::function<void(map<string, map<string, vector<string>>>)> _callback_t;
 	_callback_t _callback;*/
-	ClientDB(string ipBD, string portBD, shared_ptr<tcp::socket> socket)
+	ClientDB(string ipBD, string portBD, string workerLog, string workerPass, string nameSender, shared_ptr<tcp::socket> socket)
 		//_callback(boost::bind(&ClientDB::__сallback, this, boost::placeholders::_1))
 	{
 		//_callback = callback;
@@ -47,6 +48,10 @@ public:
 		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
 		__buf_json_recive = {};
 		__parser.reset();
+		__worker_login = workerLog;
+		__worker_password = workerPass;
+		__name_sender = nameSender;
+
 	}
 	~ClientDB()
 	{
@@ -55,6 +60,8 @@ public:
 	}
 	void start()
 	{
+		__flag_connet = false;
+		__flag_disconnect = false;
 		__socket->async_connect(*__end_point, boost::bind(&ClientDB::__checkConnect, shared_from_this(), boost::placeholders::_1));
 	}
 	void stop()
@@ -76,17 +83,53 @@ public:
 			this->start();
 			return;
 		}
-		if (!__queue_to_send.empty())
+		if (__flag_connet == false)
 		{
-			__buf_queue_string = __queue_to_send.front();
-			__queue_to_send.pop();
-			__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			if (__flag_disconnect == true)
+			{
+				cerr << "no connect" << endl;
+				this->stop();
+			}
+			else
+			{
+				__buf_queue_string = boost::json::serialize(json_formatter::database::request::connect(__name_sender, __worker_login, __worker_password));
+				__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			}
 		}
 		else
 		{
-			//_callback(__respData);
-			this->stop();
-
+			if (__flag_disconnect == false)
+			{
+				if (!__queue_tables.empty())
+				{
+					__table_name_send = __queue_tables.front();
+					__fields_name_send = __queue_fields.front();
+					__queue_tables.pop();
+					__queue_fields.pop();
+					string query = "SELECT ";
+					for (size_t i = 0; i < __fields_name_send.size() - 1; i++)
+					{
+						//проверить есть ли " еси есть - убрать
+						query += __fields_name_send[i] + ", ";
+					}
+					query += __fields_name_send[__fields_name_send.size() - 1];
+					query += " FROM " + __table_name_send;
+					cerr << query << endl;
+					//проверить query, ч там собирается
+					__buf_queue_string = boost::json::serialize(json_formatter::database::request::query(__name_sender, json_formatter::database::QUERY_METHOD::SELECT, __fields_name_send, query));
+					__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				}
+				else
+				{
+					__buf_queue_string = boost::json::serialize(json_formatter::database::request::disconnect(__name_sender));
+					__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				}
+			}
+			else
+			{
+				//_callback(__respData);
+				this->stop();
+			}
 		}
 	}
 	void __sendConnect(const boost::system::error_code& eC, size_t bytes_send)
@@ -163,13 +206,13 @@ public:
 			{
 				if (status != "success")
 				{
-					__resp_error.clear();
-					__resp_error = __buf_json_recive.as_string();
-					this->stop();
-					return;
+					__flag_disconnect = true;
+					__checkConnect(eC);
 				}
 				else
 				{
+					__flag_connet = true;
+					__flag_disconnect = false;
 					__checkConnect(eC);
 
 				}
@@ -180,14 +223,13 @@ public:
 			boost::json::value status = __buf_json_recive.at("response").at("status");
 			if (status == "success")
 			{
-				this->stop();
-				return;
+				__flag_disconnect = true;
+				__checkConnect(eC);
 			}
 			else
 			{
-				__resp_error.clear();
-				__resp_error = __buf_json_recive.as_string();
-				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&ClientDB::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				__flag_disconnect = false;
+				__checkConnect(eC);
 			}
 		}
 		else if (target == "db_query")
@@ -198,78 +240,30 @@ public:
 			try
 			{
 				whronge = false;
-				if (__buf_json_recive.at("response").at(__marussia_station_fields[0]) != "")
+				for (size_t i = 0; i < __fields_name_send.size(); i++)
 				{
-					for (size_t i = 0; i < __marussia_station_fields.size(); i++)
+					valueMap.clear();
+					boost::json::array valueJson = __buf_json_recive.at("response").at(__fields_name_send[i]).as_array();
+					for (size_t j = 0; j < valueJson.size(); j++)
 					{
-						valueMap.clear();
-						boost::json::array valueJson = __buf_json_recive.at("response").at(__marussia_station_fields[i]).as_array();
-						for (size_t j = 0; j < valueJson.size(); j++)
-						{
-							valueMap.push_back(boost::json::serialize(valueJson[j]));
-						}
-						bufRespMap[__marussia_station_fields[i]] = valueMap;
+						valueMap.push_back(boost::json::serialize(valueJson[j]));
 					}
-					__resp_data["marussiaStation"] = bufRespMap;
+					bufRespMap[__fields_name_send[i]] = valueMap;
 				}
+				__resp_data[__table_name_send] = bufRespMap;
 			}
 			catch (exception& e)
 			{
 				whronge = true;
-				cout << "No station" << endl;
-			}
-			try
-			{
-				whronge = false;
-				if (__buf_json_recive.at("response").at(__house_fields[0]) != "")
-				{
-					for (size_t i = 0; i < __house_fields.size(); i++)
-					{
-						valueMap.clear();
-						boost::json::array valueJson = __buf_json_recive.at("response").at(__house_fields[i]).as_array();
-						for (size_t j = 0; j < valueJson.size(); j++)
-						{
-							valueMap.push_back(boost::json::serialize(valueJson[j]));
-						}
-						bufRespMap[__house_fields[i]] = valueMap;
-					}
-					__resp_data["houseFields"] = bufRespMap;
-				}
-			}
-			catch (exception& e)
-			{
-				whronge = true;
-				cout << "no house" << endl;
-			}
-			try
-			{
-				whronge = false;
-				if (__buf_json_recive.at("response").at(__static_phrases_fields[0]) != "")
-				{
-					for (size_t i = 0; i < __static_phrases_fields.size(); i++)
-					{
-						valueMap.clear();
-						boost::json::array valueJson = __buf_json_recive.at("response").at(__static_phrases_fields[i]).as_array();
-						for (size_t j = 0; j < valueJson.size(); j++)
-						{
-							valueMap.push_back(boost::json::serialize(valueJson[j]));
-						}
-						bufRespMap[__static_phrases_fields[i]] = valueMap;
-					}
-					__resp_data["staticPhrases"] = bufRespMap;
-				}
-			}
-			catch (exception& e)
-			{
-				whronge = true;
-				cout << "no static" << endl;
+				cout << "No " << __table_name_send << endl;
 			}
 			__checkConnect(eC);
 		}
 	}
-	void setQuery(queue<string> queue)
+	void setQuerys(queue<string> queueTables, queue<vector<string>> queueFields)
 	{
-		__queue_to_send = queue;
+		__queue_tables = queueTables;
+		__queue_fields = queueFields;
 	}
 	map<string, map<string, vector<string>>> getRespData()
 	{
@@ -281,16 +275,21 @@ private:
 	shared_ptr<tcp::endpoint> __end_point;
 	shared_ptr<tcp::socket> __socket;
 	static const int BUF_RECIVE_SIZE = 2048;
-	queue<string> __queue_to_send;
+	queue<string> __queue_tables;
+	queue<vector<string>> __queue_fields;
 	string __buf_queue_string;
 	char* __buf_recive;
 	boost::json::value __buf_json_recive;
 	boost::json::stream_parser __parser;
 	string __resp_error;
 	map<string, map<string, vector<string>>> __resp_data;
-	vector<string> __marussia_station_fields = { "ApplicationId", "ComplexId", "HouseNum" };
-	vector<string> __house_fields = { "TopFloor", "BottomFloor", "NullFloor", "HouseNum", "ComplexId" };
-	vector<string> __static_phrases_fields = { "ComplexId", "HouseNumber", "KeyWords", "Response" };
+	string __worker_login;
+	string __worker_password;
+	string __table_name_send;
+	vector<string> __fields_name_send;
+	bool __flag_connet;
+	bool __flag_disconnect;
+	string __name_sender;
 
 	enum __CHECK_STATUS
 	{
