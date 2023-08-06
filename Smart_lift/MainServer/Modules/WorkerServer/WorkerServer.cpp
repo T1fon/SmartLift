@@ -92,9 +92,9 @@ ISession::~ISession() { cout << "ISESSION DELETE" << endl; delete[] _buf_recive;
 Session::Session(string sender, boost::asio::ip::tcp::socket& socket,
     boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
     _socket(std::move(socket)),
-    _ping_timer(std::move(ping_timer)), _dead_ping_timer(std::move(dead_ping_timer)), 
-    _callback(boost::bind(&Session::__emptyCallback, shared_from_this(), _1, _2))
+    _ping_timer(std::move(ping_timer)), _dead_ping_timer(std::move(dead_ping_timer))
 {
+    _callback = boost::bind(&Session::__emptyCallback, this, _1, _2);
     _sender = sender;
 }
 Session::~Session() {
@@ -263,8 +263,8 @@ void Session::__emptyCallback(boost::system::error_code error, boost::json::valu
     cerr << "Был вызван __emptyCallback" << endl;
 }
 void Session::_commandAnalize() {}
-void Session::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) {}
-void Session::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback) {}
+void Session::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {}
+void Session::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback) {}
 //-------------------------------------------------------------//
 SessionMQTT::SessionMQTT(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
     Session(sender, socket, std::move(ping_timer), std::move(dead_ping_timer))
@@ -280,6 +280,7 @@ void SessionMQTT::_commandAnalize() {
         }
         else if (target == "mqtt_message") {
             /**/
+            __mqttMessage();
         }
         else if (target == "connect") {
             _autorization();
@@ -289,7 +290,7 @@ void SessionMQTT::_commandAnalize() {
         cerr << "_commandAnalize " << e.what() << endl;
     }
 }
-void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) {
+void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {
     if (command_code == COMMAND_CODE_MQTT::MOVE_LIFT) {
         _callback = callback;
         move_lift_t* parametr = (move_lift_t*)command_parametr;
@@ -335,7 +336,7 @@ void SessionMarussia::_commandAnalize()
         cerr << "_commandAnalize " << e.what() << endl;
     }
 }
-void SessionMarussia::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback)
+void SessionMarussia::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback)
 {
     if (command_code == MARUSSIA_STATION_REQUEST) {
         _callback = callback;

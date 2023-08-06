@@ -122,6 +122,7 @@ void Listener::start() {
     __timer_kill->expires_from_now(boost::posix_time::seconds(__TIME_DEAD_SESSION));
     __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession,shared_from_this()));
 }
+
 void Listener::__killSession(beast::error_code ec) {
     bool kill = false;
     for (auto i = __sessions->begin(); i != __sessions->end(); i++) {
@@ -221,7 +222,7 @@ void Session::__analizeRequest()
     }
     cout << "size " << __sessions_marussia->size() << endl;
     __sessions_marussia->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MARUSSIA::MARUSSIA_STATION_REQUEST, (void*)&__body_request, 
-                                            boost::bind(&Session::__callbackWorkerMarussia, shared_from_this(), _1, _2));
+                                            boost::bind(&Session::__callbackWorkerMarussia, this, _1, _2));
     //-----------------------
 
     //тест
@@ -297,7 +298,7 @@ void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::j
                 throw exception("session mqtt size = 0");
             }
             __sessions_mqtt->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MQTT::MOVE_LIFT, (void*)&__body_request,
-                boost::bind(&Session::__callbackWorkerMQTT, shared_from_this(), _1, _2));
+                boost::bind(&Session::__callbackWorkerMQTT, this, _1, _2));
             return;
         }
         else {

@@ -70,7 +70,7 @@ namespace worker_server {
         boost::asio::ip::tcp::socket _socket;
         boost::asio::deadline_timer _ping_timer;
         boost::asio::deadline_timer _dead_ping_timer;
-        _callback_t&& _callback;
+        _callback_t _callback;
 
         virtual void _autorization() override;
         virtual _CHECK_STATUS _reciveCheck(const size_t& count_recive_byte, _handler_t&& handler) override;
@@ -88,8 +88,8 @@ namespace worker_server {
         virtual void start() override;
         virtual void stop() override;
         virtual bool isLive() override;
-        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback);
-        virtual void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
+        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback);
+        virtual void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback);
     };
     /*-----------------------------------------------------------------------------------*/
     class SessionMQTT : public Session {
@@ -105,7 +105,7 @@ namespace worker_server {
         };
         SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~SessionMQTT();
-        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t&& callback) override;
+        virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) override;
     };
 
     /*-----------------------------------------------------------------------------------*/
@@ -123,7 +123,7 @@ namespace worker_server {
         };
         SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~SessionMarussia();
-        void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t&& callback);
+        void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback);
     };
 
     /*-----------------------------------------------------------------------------------*/

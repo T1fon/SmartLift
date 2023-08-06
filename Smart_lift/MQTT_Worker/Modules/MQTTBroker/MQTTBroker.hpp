@@ -78,5 +78,6 @@ namespace mqtt_broker {
         void init();
         void start();
         void stop();
+        con_sp_t getWorker();
 	};
 }

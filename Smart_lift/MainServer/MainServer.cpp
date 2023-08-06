@@ -11,14 +11,18 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__configer->readConfig();
 	__configuration = __configer->getConfigInfo();
 	try {
+		if (__configuration.size() == 0) {
+			return CONFIG_FILE_NOT_OPEN;
+		}
+
 		__port_marussia_station = stoi(__configuration.at("Marussia_port"));
 		__port_mqtt = stoi(__configuration.at("MQTT_port"));
 		__port_worker_mqtt = stoi(__configuration.at("Worker_MQTT_port"));;
 		__port_worker_mqtt_info = stoi(__configuration.at("Worker_MQTT_info_port"));
 		__port_worker_marussia = stoi(__configuration.at("Worker_marussia_port"));
 		__count_threads = stoi(__configuration.at("Count_threads"));
-		if (__port_marussia_station < 0 || __port_mqtt < 0 || __port_worker_mqtt < 0 ||
-			__port_worker_mqtt_info < 0 || __port_worker_marussia < 0 || __count_threads <= 0) 
+		if (__port_marussia_station < 1 || __port_mqtt < 1 || __port_worker_mqtt < 1 ||
+			__port_worker_mqtt_info < 1 || __port_worker_marussia < 1 || __count_threads < 1) 
 		{
 			throw exception("Port < 0");
 		}
@@ -38,12 +42,13 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 }
 void MainServer::stop(){
 	__server_w_mqtt->stop();
+	__server_w_marussia->stop();
 }
 void MainServer::start() {
 	__server_w_mqtt->start();
 	__server_w_marussia->start();
 	__server_https->start();
-
+	
 	std::vector<std::thread> v;
 	v.reserve(__count_threads - 1);
 	for (auto i = __count_threads - 1; i > 0; --i)

@@ -1,5 +1,5 @@
 #include "MQTTBroker.hpp"
-
+//(*end_p).publish("LU127728/set/cmd", std::string("{\"cmdlft\":[1,") + std::to_string(a.at(i)) + std::string("]}"));
 using namespace mqtt_broker;
 MQTTBroker::MQTTBroker() {}
 MQTTBroker::MQTTBroker(shared_ptr<MQTT_NS::server<>> server):__server(server){}
@@ -22,13 +22,11 @@ void MQTTBroker::init(){
         }
     );
     
-    
     __server->set_accept_handler(
         [this](con_sp_t spep) {
             auto& ep = *spep;
             __wp = spep;
             __worker = spep;
-            
             std::cout << "accept" << std::endl;
 
             // Pass spep to keep lifetime.
@@ -185,4 +183,7 @@ void MQTTBroker::stop(){
 }
 MQTTBroker::~MQTTBroker() {
     this->stop();
+}
+con_sp_t MQTTBroker::getWorker() {
+    return __worker;
 }

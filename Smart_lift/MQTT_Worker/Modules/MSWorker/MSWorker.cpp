@@ -1,6 +1,8 @@
 #include "MSWorker.hpp"
 using namespace std;
-MSWorker::MSWorker(string ip, string port, string id_worker, boost::asio::io_context& ioc) {
+MSWorker::MSWorker(string ip, string port, string id_worker, std::vector<std::string>& lu_id, boost::asio::io_context& ioc) : 
+					__lu_id(lu_id)
+{
 	__end_point = make_shared<net::tcp::endpoint>(net::tcp::endpoint(net::address::from_string(ip), stoi(port)));
 	__socket = make_shared<net::tcp::socket>(net::tcp::socket(ioc));
 	__buf_recive = new char[BUF_RECIVE_SIZE + 1];
@@ -9,6 +11,7 @@ MSWorker::MSWorker(string ip, string port, string id_worker, boost::asio::io_con
 	fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
 	__buf_json_recive = {};
 	__parser.reset();
+	__callback_mqtt_worker = bind(&MSWorker::__emptyCallback, this, _1, _2, _3);
 }
 MSWorker::~MSWorker() {
 	this->stop();
@@ -36,10 +39,6 @@ void MSWorker::__requestAuthentication(const boost::system::error_code& error){
 						 boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1,_2));
 }
 
-	//void* a = (void*)(&vector<string>());
-	//vector<string>* b = (vector<string>*)a;
-	//b->push_back("nu kak tak to 4 kurs ushe");
-
 void MSWorker::__connectAnalize() {
 	
 	try {
@@ -64,6 +63,9 @@ void MSWorker::__connectAnalize() {
 		return;
 	}
 
+}
+void MSWorker::__emptyCallback(std::string lu_id, std::string floor_number, std::string station_id) {
+	cout << "called __emptyCallback " << lu_id << " "<<floor_number << " " << station_id <<  endl;
 }
 
 MSWorker::__CHECK_STATUS MSWorker::__reciveCheck(const size_t& count_recive_byte, __handler_t&& handler) {
@@ -144,7 +146,7 @@ void MSWorker::__commandAnalize() {
 			__responsePing();
 		}
 		else if(target == "Move_lift") {
-			
+			__moveLift();
 		}
 		else if (target == "disconnect") {
 			__responseDisconnect();
@@ -165,6 +167,40 @@ void MSWorker::__responsePing() {
 }
 void MSWorker::__responseDisconnect() {
 	__buf_send = serialize(json_formatter::worker::response::disconnect(__WORKER_NAME));
+	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
+		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
+}
+void MSWorker::__moveLift() {
+	bool found = false;
+	try {
+		for (auto i = __lu_id.begin(); i != __lu_id.end(); i++) {
+			if ((*i) == __buf_json_recive.at("request").at("mqtt_command").at("lb_id").as_string()) {
+				found = true;
+				break;
+			}
+		}
+	}
+	catch (exception& e) {
+		cerr << "__moveLift: " << e.what() << endl;
+	};
+	if (!found) {
+		__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, __buf_json_recive.at("request").at("station_id").as_string().c_str(),
+																				json_formatter::STATUS_OPERATION::fail, "LU not found"));
+		__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
+			boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
+		return;
+	}
+	
+	__callback_mqtt_worker( __buf_json_recive.at("request").at("mqtt_command").at("lb_id").as_string().c_str(),
+						    __buf_json_recive.at("request").at("mqtt_command").at("value").as_string().c_str(),
+							__buf_json_recive.at("request").at("station_id").as_string().c_str());
+}
+void MSWorker::setCallback(callback_mqtt_worker_t callback_mqtt_worker) {
+	__callback_mqtt_worker = callback_mqtt_worker;
+}
+void MSWorker::successMove(std::string station_id) {
+	__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, station_id,
+		json_formatter::STATUS_OPERATION::success));
 	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
 		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
 }
