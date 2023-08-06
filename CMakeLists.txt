@@ -22,18 +22,3 @@ add_subdirectory("Smart_lift/Worker")
 project("DataBase")
 
 add_subdirectory("Smart_lift/DataBase")
-
-project ("Vorker")
-
-add_subdirectory("Smart_lift/Worker")
-
-project("DataBase")
-
-add_subdirectory("Smart_lift/DataBase")
-project("MainServer")
-
-add_subdirectory("Smart_lift/MainServer")
-
-project("MQTT_Worker")
-
-add_subdirectory("Smart_lift/MQTT_Worker")
