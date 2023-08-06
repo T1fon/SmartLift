@@ -4,5 +4,8 @@
 #pragma once
 
 #include <iostream>
+#include "GlobalModules/Client/Client.hpp"
+#include "GlobalModules/JSONFormatter/JSONFormatter.hpp"
+#include "boost/asio.hpp"
 
 // TODO: установите здесь ссылки на дополнительные заголовки, требующиеся для программы.

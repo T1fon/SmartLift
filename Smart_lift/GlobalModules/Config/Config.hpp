@@ -35,7 +35,7 @@ private:
     string __way;
     string __file_name;
     string __final_path;
-    shared_ptr<Log> __log_ñonfig;
+    shared_ptr<Log> __log_config;
     map<string, string> __config_info;
     void __writeError(int error);
 };
