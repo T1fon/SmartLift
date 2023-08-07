@@ -1,4 +1,4 @@
-﻿#include "GlobalModules/Client/Client.hpp"
+﻿#include "GlobalModules/ClientDB/ClientDB.hpp"
 #include "GlobalModules/JSONFormatter/JSONFormatter.hpp"
 #include <iostream>
 
@@ -14,7 +14,7 @@ int main()
 	std::cout << "HIHIHIH" << std::endl;
 	string ip = "127.0.0.1";
 	string port = "80";
-	string __name = "Client";
+	string __name = "ClientDB";
 	string __bDLog = "1";
 	string __bDPas = "1";
 	queue<string> tables;
