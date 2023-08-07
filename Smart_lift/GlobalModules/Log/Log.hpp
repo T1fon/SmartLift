@@ -14,23 +14,23 @@ using namespace std;
 class Log : public enable_shared_from_this<Log>
 {
 public:
-    Log(string way, string rootDirectory, string nameClass);
+    Log(string way, string root_directory, string name_class);
     void writeTempLog(int error, string clas, string message);
     void writeLog(int error, string clas, string message);
-    string getDate();
-    bool checkFile();
-    streamsize getFileSize();
     void setFinalPath();
-    void writeLogToFile(string clas, string message, int error);
+    streamsize getFileSize();
+    string getDate();
 private:
-    string __nameFile;
-    string __finalPath;
+    bool __checkFile();
+    void __writeLogToFile(string clas, string message, int error);
+    string __name_file;
+    string __final_path;
     string __date;
-    int __numFile;
-    int __numMassive;
-    string __temporaryLog[3];
+    int __num_file;
+    int __num_massive;
+    string __temporary_log[3];
     string __way;
-    string __bufWay;
-    string __rootDirectory;
+    string __buf_way;
+    string __root_directory;
 
 };

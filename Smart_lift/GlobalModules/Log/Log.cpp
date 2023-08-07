@@ -2,23 +2,23 @@
 
 Log::Log(string way, string rootDirectory, string nameClass)
 {
-	__rootDirectory = rootDirectory;
-	__nameFile = nameClass;
+	__root_directory = rootDirectory;
+	__name_file = nameClass;
 	__way = way;
 	__date = getDate();
-	__numFile = 1;
+	__num_file = 1;
 	setFinalPath();
-	__numMassive = 2;
+	__num_massive = 2;
 }
 
 
 
 void Log::writeLog(int error, string clas, string message)
 {
-	bool flagFile = checkFile();
+	bool flagFile = __checkFile();
 	if (flagFile == false)
 	{
-		writeLogToFile(clas, message, error);
+		__writeLogToFile(clas, message, error);
 	}
 	else
 	{
@@ -28,33 +28,33 @@ void Log::writeLog(int error, string clas, string message)
 		{
 			if (__date == buffDate)
 			{
-				__numFile++;
+				__num_file++;
 				setFinalPath();
 			}
 			else
 			{
 				__date = buffDate;
-				__numFile = 1;
+				__num_file = 1;
 				setFinalPath();
 			}
 		}
 		else if (buffDate != __date)
 		{
 			__date = buffDate;
-			__numFile = 1;
+			__num_file = 1;
 			setFinalPath();
 		}
 		else
 		{
 			setFinalPath();
 		}
-		writeLogToFile(clas, message, error);
+		__writeLogToFile(clas, message, error);
 	}
 }
 
-void Log::writeLogToFile(string clas, string message, int error)
+void Log::__writeLogToFile(string clas, string message, int error)
 {
-	ofstream ost(__finalPath, ios::app);
+	ofstream ost(__final_path, ios::app);
 	string buffLog = "(" + __date + ")_" + clas + "_" + "\"" + message + "\"";
 	if (error != 0)
 	{
@@ -77,9 +77,9 @@ string Log::getDate()
 	return time;
 }
 
-bool Log::checkFile()
+bool Log::__checkFile()
 {
-	ifstream fin(__finalPath);
+	ifstream fin(__final_path);
 	if (fin.is_open())
 	{
 		return true;
@@ -93,7 +93,7 @@ bool Log::checkFile()
 
 streamsize Log::getFileSize()
 {
-	fstream file(__finalPath, fstream::in);
+	fstream file(__final_path, fstream::in);
 	file.seekg(0, ios::end);
 	streamsize fileSize = file.tellg();
 	file.close();
@@ -103,7 +103,7 @@ streamsize Log::getFileSize()
 
 void Log::setFinalPath()
 {
-	__finalPath = __rootDirectory + __way + __nameFile + "_(" + __date + ")_" + to_string(__numFile) + ".log";
+	__final_path = __root_directory + __way + __name_file + "_(" + __date + ")_" + to_string(__num_file) + ".log";
 }
 
 void Log::writeTempLog(int error, string clas, string message)
@@ -113,29 +113,29 @@ void Log::writeTempLog(int error, string clas, string message)
 	{
 		buffLog = buffLog + "_" + to_string(error);
 	}
-	switch (__numMassive)
+	switch (__num_massive)
 	{
 	case 2:
 	{
-		__temporaryLog[__numMassive] = buffLog;
-		__numMassive = 1;
+		__temporary_log[__num_massive] = buffLog;
+		__num_massive = 1;
 		break;
 	}
 	case 1:
 	{
-		__temporaryLog[__numMassive] = __temporaryLog[__numMassive + 1];
-		__temporaryLog[__numMassive + 1] = buffLog;
-		__numMassive = 0;
+		__temporary_log[__num_massive] = __temporary_log[__num_massive + 1];
+		__temporary_log[__num_massive + 1] = buffLog;
+		__num_massive = 0;
 		break;
 	}
 	case 0:
 	{
 		for (int i = 0; i < 2; i++)
 		{
-			__temporaryLog[i] = __temporaryLog[i + 1];
+			__temporary_log[i] = __temporary_log[i + 1];
 		}
-		__numMassive = 2;
-		__temporaryLog[__numMassive] = buffLog;
+		__num_massive = 2;
+		__temporary_log[__num_massive] = buffLog;
 		break;
 	}
 	default:
