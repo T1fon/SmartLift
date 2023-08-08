@@ -34,7 +34,8 @@ set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp" "${GLOBAL_MODUL
 set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
 set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
 set(MOD_SERVER "${MODULES}/Worker/Worker.hpp")
-set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER})
+set(MOD_CLIENT "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
+set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER} ${MOD_CLIENT})
 
 
 add_executable (Vorker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
