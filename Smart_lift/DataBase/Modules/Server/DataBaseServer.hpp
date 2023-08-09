@@ -232,7 +232,7 @@ private:
 		if (__flag_wrong_connect)
 		{
 			stop();
-			__flag_wrong_connect = false;
+				__flag_wrong_connect = false;
 		}
 	}
 	void __sendCommand(const boost::system::error_code& eC, size_t bytes_send)
