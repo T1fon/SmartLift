@@ -68,6 +68,7 @@ void Config::readConfig()
 		}
 		__log_config->writeLog(0, "config", "Write Config");
 		__config_info = config;
+		fin.close();
 	}
 	else
 	{

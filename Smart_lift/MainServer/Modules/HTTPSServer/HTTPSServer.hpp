@@ -46,6 +46,9 @@ namespace https_server {
         std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_mqtt;
         std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> __sessions_marussia;
 
+        worker_server::SessionMarussia::marussia_station_request_t __request_marusia;
+        worker_server::SessionMQTT::move_lift_t __request_mqtt;
+
     public:
         explicit Session(tcp::socket&& socket,
             ssl::context& ssl_ctx,
@@ -58,7 +61,7 @@ namespace https_server {
         void __onHandshake(beast::error_code ec);
         void __doRead();
         void __onRead(beast::error_code ec,
-                      std::size_t bytes_transferred);
+                      std::size_t bytes_transferred);   
         void __sendResponse(http::message_generator&& msg);
         void __onWrite(bool keep_alive,
                        beast::error_code ec,

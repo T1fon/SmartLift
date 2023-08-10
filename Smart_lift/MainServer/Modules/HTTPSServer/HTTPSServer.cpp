@@ -220,8 +220,10 @@ void Session::__analizeRequest()
         __callbackWorkerMarussia({}, {});
         return;
     }
+    __request_marusia.body = __body_request;
+    __request_marusia.station_id = __body_request.at("session").at("application").at("application_id").as_string();
     cout << "size " << __sessions_marussia->size() << endl;
-    __sessions_marussia->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MARUSSIA::MARUSSIA_STATION_REQUEST, (void*)&__body_request, 
+    __sessions_marussia->at(0)->startCommand(worker_server::Session::COMMAND_CODE_MARUSSIA::MARUSSIA_STATION_REQUEST, (void*)&__request_marusia,
                                             boost::bind(&Session::__callbackWorkerMarussia, this, _1, _2));
     //-----------------------
 

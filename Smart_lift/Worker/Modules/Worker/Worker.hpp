@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 #include "../../../GlobalModules/Log/Log.hpp"
 #include "../../../GlobalModules/Config/Config.hpp"
 #include "../../../GlobalModules/JSONFormatter/JSONFormatter.hpp"
@@ -38,13 +38,13 @@ public:
 	typedef std::function<void(map<string, map<string, vector<string>>> )> _callback_t;
 	_callback_t callback;
 
-	void __сallback(map<string, map<string, vector<string>>> data)
+	void __СЃallback(map<string, map<string, vector<string>>> data)
 	{
 		setDbInfo(data);
 	}
 
 	Worker(map<string, string> conf_info, net::io_context& ioc, shared_ptr<Log> lg) :__ioc(ioc),
-		callback(boost::bind(&Worker::__сallback, this, boost::placeholders::_1))
+		callback(boost::bind(&Worker::__СЃallback, this, boost::placeholders::_1))
 	{
 		cout << 1 << endl;
 		__socket = make_shared<tcp::socket>(__ioc);
@@ -76,6 +76,89 @@ public:
 			this->stop();
 			return;
 		}
+		string way = "./keysForMqtt.txt";
+		string boof_key;
+		ifstream fin(way);
+		if (!fin.is_open())
+		{
+			cerr << "no keys for mqtt" << endl;
+			return;
+		}
+		else
+		{
+			getline(fin, boof_key);
+			fin.close();
+		}
+		int num = boof_key.find(",");
+		if (num != boof_key.npos)
+		{
+			while (num != boof_key.npos)
+			{
+				string buf_string;
+				buf_string.assign(boof_key, 0, num);
+				boof_key.erase(0, buf_string.size() + 1);
+				__mqtt_keys.push_back(buf_string);
+				num = boof_key.find(",");
+			}
+			__mqtt_keys.push_back(boof_key);
+		}
+		else
+		{
+			__mqtt_keys.push_back(boof_key);
+		}
+
+		way = "./keysForFloors.txt";
+		ifstream fina(way);
+		if (!fina.is_open())
+		{
+			cerr << "no keys for floors" << endl;
+			return;
+		}
+		else
+		{
+			getline(fina, boof_key);
+			fina.close();
+		}
+		num = boof_key.find(",");
+		if (num != boof_key.npos)
+		{
+			while (num != boof_key.npos)
+			{
+				string buf_string;
+				buf_string.assign(boof_key, 0, num);
+				boof_key.erase(0, buf_string.size() + 1);
+				__key_roots.push_back(buf_string);
+				num = boof_key.find(",");
+			}
+			__key_roots.push_back(boof_key);
+		}
+		else
+		{
+			__key_roots.push_back(boof_key);
+		}
+		way = "./numberFloors.txt";
+		ifstream fins(way);
+		if (fins.is_open())
+		{
+			while (!fins.eof())
+			{
+				string boof;
+				string key;
+				getline(fins, boof);
+				size_t border = boof.find(":");
+				key.append(boof, 0, border);
+				boof.erase(0, border + 1);
+				cerr << key << " " << boof << endl;
+				__num_roots[key] = boof;
+			}
+			fin.close();
+		}
+		else
+		{
+			cerr << "No floors" << endl;
+			return;
+		}
+
 	}
 	~Worker()
 	{
@@ -140,15 +223,18 @@ private:
 	shared_ptr<Log> __log;
 	shared_ptr<tcp::endpoint> __end_point;
 	bool __flag_disconnect = false;
+	string __response_command;
 
-	vector<string> __key_roots = { "перв", "втор", "трет", "чет", "пят", "шест", "седьм", "восьм", "девят","дцат", "сорок", "десят",  "девян", "сот","сто","минус" };
-	map<string, int> __num_roots = {
-		{"минус третий", -3}, {"минус второй", -2}, {"минус первый", -1}, {"нулевой", 0},
-		{"первый", 1}, {"второй", 2}, {"третий", 3}, {"четвертый", 4}, {"пятый", 5}, {"шестой", 6}, {"седьмой", 7}, {"восьмой", 8},{"девятый", 9}, {"десятый", 10},
-		{"одиннадцатый", 11}, {"двенадцатый", 12}, {"тринадцатый", 13}, {"четырнадцатый", 14}, {"пятнадцатый", 15}, {"шестнадцатый", 16}, {"семнадцатый", 17}, {"восемнадцатый", 18},
-		{"девятнадцатый", 19}, {"двадцатый", 20}, {"двадцать первый", 21}, {"двадцать второй", 22}, {"двадцать третий", 23}, {"двадцать четвертый", 24}, {"двадцать пятый", 25},
-		{"двадцать шестой", 26}, {"двадцать седьмой", 27}, {"двадцать восьмой", 28}, {"двадцать девятый", 29}, {"тридцатый", 30}
-	};
+	vector<string> __key_roots; //= { "РїРµСЂРІ", "РІС‚РѕСЂ", "С‚СЂРµС‚", "С‡РµС‚", "РїСЏС‚", "С€РµСЃС‚", "СЃРµРґСЊРј", "РІРѕСЃСЊРј", "РґРµРІСЏС‚","РґС†Р°С‚", "СЃРѕСЂРѕРє", "РґРµСЃСЏС‚",  "РґРµРІСЏРЅ", "СЃРѕС‚","СЃС‚Рѕ","РјРёРЅСѓСЃ", "РЅСѓР»РµРІ"};
+	map<string, string> __num_roots;/*= {
+		{"РјРёРЅСѓСЃ С‚СЂРµС‚РёР№", -3}, {"РјРёРЅСѓСЃ РІС‚РѕСЂРѕР№", -2}, {"РјРёРЅСѓСЃ РїРµСЂРІС‹Р№", -1}, {"РЅСѓР»РµРІРѕР№", 0},
+		{"РїРµСЂРІС‹Р№", 1}, {"РІС‚РѕСЂРѕР№", 2}, {"С‚СЂРµС‚РёР№", 3}, {"С‡РµС‚РІРµСЂС‚С‹Р№", 4}, {"РїСЏС‚С‹Р№", 5}, {"С€РµСЃС‚РѕР№", 6}, {"СЃРµРґСЊРјРѕР№", 7}, {"РІРѕСЃСЊРјРѕР№", 8},{"РґРµРІСЏС‚С‹Р№", 9}, {"РґРµСЃСЏС‚С‹Р№", 10},
+		{"РѕРґРёРЅРЅР°РґС†Р°С‚С‹Р№", 11}, {"РґРІРµРЅР°РґС†Р°С‚С‹Р№", 12}, {"С‚СЂРёРЅР°РґС†Р°С‚С‹Р№", 13}, {"С‡РµС‚С‹СЂРЅР°РґС†Р°С‚С‹Р№", 14}, {"РїСЏС‚РЅР°РґС†Р°С‚С‹Р№", 15}, {"С€РµСЃС‚РЅР°РґС†Р°С‚С‹Р№", 16}, {"СЃРµРјРЅР°РґС†Р°С‚С‹Р№", 17}, {"РІРѕСЃРµРјРЅР°РґС†Р°С‚С‹Р№", 18},
+		{"РґРµРІСЏС‚РЅР°РґС†Р°С‚С‹Р№", 19}, {"РґРІР°РґС†Р°С‚С‹Р№", 20}, {"РґРІР°РґС†Р°С‚СЊ РїРµСЂРІС‹Р№", 21}, {"РґРІР°РґС†Р°С‚СЊ РІС‚РѕСЂРѕР№", 22}, {"РґРІР°РґС†Р°С‚СЊ С‚СЂРµС‚РёР№", 23}, {"РґРІР°РґС†Р°С‚СЊ С‡РµС‚РІРµСЂС‚С‹Р№", 24}, {"РґРІР°РґС†Р°С‚СЊ РїСЏС‚С‹Р№", 25},
+		{"РґРІР°РґС†Р°С‚СЊ С€РµСЃС‚РѕР№", 26}, {"РґРІР°РґС†Р°С‚СЊ СЃРµРґСЊРјРѕР№", 27}, {"РґРІР°РґС†Р°С‚СЊ РІРѕСЃСЊРјРѕР№", 28}, {"РґРІР°РґС†Р°С‚СЊ РґРµРІСЏС‚С‹Р№", 29}, {"С‚СЂРёРґС†Р°С‚С‹Р№", 30}
+	};*/
+	vector<string> __mqtt_keys;
+
 	map<string, string> __config_info;
 
 	void __connectToMS()
@@ -323,7 +409,7 @@ private:
 		queue<string> tables;
 		tables.push("MarussiaStation"); tables.push("House"); tables.push("StaticPhrases");
 		queue<vector<string>> fields;
-		vector<string> fields_marussia = { "ApplicationId", "ComplexId", "HouseNum" };
+		vector<string> fields_marussia = { "ApplicationId", "ComplexId", "HouseNum", "LiftBlockId"};
 		vector<string> fields_house = { "TopFloor", "BottomFloor", "NullFloor", "HouseNum", "ComplexId" };
 		vector<string> fields_phrases = { "ComplexId", "HouseNumber", "KeyWords", "Response" };
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
@@ -346,7 +432,8 @@ private:
 	{
 		__log->writeTempLog(0, __name, "__analize_response");
 		///___marussia station House number and complex id___///
-		string app_id = boost::json::serialize(__buf_json_recive.at("request").at("station_id"));//station_id и application в бд эт одно и тоже?
+		string app_id = boost::json::serialize(__buf_json_recive.at("request").at("station_id"));
+		cerr << "app_id" << app_id << endl;
 		map<string, vector<string>> one_table = __db_info.at("MarussiaStation");
 		vector<string> buf_vec = __db_info.at("MarussiaStation").at("ApplicationId");
 		vector<string> house_vec = __db_info.at("MarussiaStation").at("HouseNum");
@@ -356,7 +443,8 @@ private:
 		string num_house = "-1";
 		string comp_id = "-1";
 		string lift_block = "";
-		string response = "";
+		__response_command.clear();
+		cout << __response_command << endl;
 
 		for (size_t i = 0; i < buf_vec.size(); i++)
 		{
@@ -368,6 +456,9 @@ private:
 				break;
 			}
 		}
+		cerr << "num_house " << num_house << endl;
+		cerr << "comp_id " << comp_id << endl;
+		cerr << "lift_block " << lift_block << endl;
 
 		///___search for mqtt_____/////
 		boost::json::array array_tokens = __buf_json_recive.at("request").at("body").at("request").at("nlu").at("tokens").as_array();
@@ -375,12 +466,20 @@ private:
 		bool flag_mqtt = false;
 		for (size_t i = 0; i < array_tokens.size(); i++)
 		{
-			search_mqtt.push_back(boost::json::serialize(array_tokens[i]));
-			if (array_tokens[i].as_string() == "этаж" || array_tokens[i].as_string() == "подъем" || array_tokens[i].as_string() == "спуск" || array_tokens[i].as_string() == "подними" || array_tokens[i].as_string() == "опусти")
+
+			string string_mqtt = boost::json::serialize(array_tokens[i]);
+			//remove_copy(buf_string_mqtt.begin(), buf_string_mqtt.end(), back_inserter(string_mqtt), '"');
+			search_mqtt.push_back(string_mqtt);
+			for(size_t j = 0; j < __mqtt_keys.size(); j++)
 			{
-				flag_mqtt = true;
+				//cerr << "array" << array_tokens[i] << " my" << __mqtt_keys[j] << endl;
+				if (array_tokens[i].as_string() == __mqtt_keys[j])
+				{
+					flag_mqtt = true;
+				}
 			}
 		}
+		cerr << "flag_mqtt " << flag_mqtt << endl;
 		if (flag_mqtt)
 		{
 			one_table.clear();
@@ -392,7 +491,6 @@ private:
 			vector<string> bot_floor = __db_info.at("House").at("BottomFloor");
 			vector<string> null_floor = __db_info.at("House").at("NullFloor");
 			string bufNum = "";
-			int floor;
 			for (size_t i = 0; i < __key_roots.size(); i++)
 			{
 				for (size_t j = 0; j < search_mqtt.size(); j++)
@@ -403,56 +501,110 @@ private:
 					}
 				}
 			}
-			int numFloor = __num_roots.at(bufNum);
-
+			cerr << "bufNum " << bufNum << endl;
+			string string_number = "";
+			remove_copy(bufNum.begin(), bufNum.end(), back_inserter(string_number), '"');
+			string numFloor = __num_roots.at(string_number);
+			int number_floor = stoi(numFloor);
+			cerr << numFloor << " " << number_floor << endl;
 			for (size_t i = 0; i < house_vec.size(); i++)
 			{
 				if (house_vec[i] == num_house && comp_vec[i] == comp_id)
 				{
-					if (top_floor[i] <= to_string(numFloor) && bot_floor[i] >= to_string(numFloor) || null_floor[i] == to_string(numFloor))
+					string boofer;
+					remove_copy(top_floor[i].begin(), top_floor[i].end(), back_inserter(boofer), '"');
+					int top = stoi(boofer);
+
+					boofer.clear();
+					remove_copy(bot_floor[i].begin(), bot_floor[i].end(), back_inserter(boofer), '"');
+					int bot = stoi(boofer);
+
+					boofer.clear();
+					remove_copy(null_floor[i].begin(), null_floor[i].end(), back_inserter(boofer), '"');
+					int null;
+					if (boofer == "-1")
 					{
-						response = "перемещаю вас на " + bufNum + "этаж";
+						null = -1;
+					}
+					else
+					{
+						null = 0;
+					}
+					cerr << top << "" << bot << " " << null << endl;
+ 					if (top >= number_floor && bot <= number_floor || null == number_floor)
+					{
+						//__response_command = "РїРµСЂРµРјРµС‰Р°СЋ РІР°СЃ РЅР° " + numFloor + "СЌС‚Р°Р¶";
+						__response_command = __num_roots.at("command") + " " + string_number + " " + __mqtt_keys[0];
 						break;
 					}
 				}
 			}
-			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(response), lift_block, numFloor));
+			cerr << "mqtt ";
+			cerr << __response_command << endl;
+			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(__response_command), lift_block, number_floor));
+			cerr << __buf_send << endl;
+			flag_mqtt = false;
 		}
 		else
 		{
 			///_____static phrases response static phrase___///
 
-			string command = boost::json::serialize(__buf_json_recive.at("request").at("body").at("request").at("command"));
+			string buf_command = boost::json::serialize(__buf_json_recive.at("request").at("body").at("request").at("command"));
+			string command;
+			remove_copy(buf_command.begin(), buf_command.end(), back_inserter(command), '"');
 			one_table.clear();
 			one_table = __db_info.at("StaticPhrases");
 			buf_vec.clear(); house_vec.clear(); comp_vec.clear();
 			buf_vec = __db_info.at("StaticPhrases").at("KeyWords");
 			house_vec = __db_info.at("StaticPhrases").at("HouseNumber");
 			comp_vec = __db_info.at("StaticPhrases").at("ComplexId");
-
 			vector<string> resp = __db_info.at("StaticPhrases").at("Response");
-
-			response.clear();
 
 			for (size_t i = 0; i < buf_vec.size(); i++)
 			{
-				if (command == buf_vec[i])
+				string all_variants = buf_vec[i];
+				vector<string> vector_variants;
+				int num = all_variants.find(";");
+				if (num != all_variants.npos)
 				{
-					if (num_house == house_vec[i] && comp_id == comp_vec[i])
+					while (num != all_variants.npos)
 					{
-						response = resp[i];
-						break;
+						string buf_string;
+						buf_string.assign(all_variants, 0, num);
+						all_variants.erase(0, buf_string.size() + 1);
+						vector_variants.push_back(buf_string);
+						num = all_variants.find(";");
+					}
+					vector_variants.push_back(all_variants);
+				}
+				else
+				{
+					vector_variants.push_back(all_variants);
+				}
+				for(size_t j = 0; j < vector_variants.size(); j++)
+				{
+					string buf_variant;
+					remove_copy(vector_variants[j].begin(), vector_variants[j].end(), back_inserter(buf_variant), '"');
+					if (command == buf_variant)
+					{
+						if (num_house == house_vec[i] && comp_id == comp_vec[i])
+						{
+							__response_command = resp[i];
+							break;
+						}
 					}
 				}
 			}
-			if (response != "")
+			if (!__response_command.empty())
 			{
-				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(response)));
+				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(__response_command)));
+				cerr << __buf_send << endl;
 			}
 			else
 			{
-				response = "Извините, я не знаю такой комманды, попробуйте перефразировать";
-				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(response)));
+				__response_command.append("РР·РІРёРЅРёС‚Рµ, СЏ РЅРµ Р·РЅР°СЋ С‚Р°РєРѕР№ РєРѕРјР°РЅРґС‹, РїРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРµСЂРµС„СЂР°Р·РёСЂСѓР№С‚Рµ");
+				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(__response_command)));
+				cerr << __buf_send << endl;
 			}
 		}
 
