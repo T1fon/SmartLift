@@ -56,13 +56,14 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_include_directories(Vorker PUBLIC ${Boost_INCLUDE_DIRS})
 	target_include_directories(Vorker PUBLIC ${OPENSSL_INCLUDE_DIR})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic locale REQUIRED)
 	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 
 
 	target_link_libraries(Vorker PUBLIC Boost::thread)
 	target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
+	target_link_libraries(Vorker PUBLIC Boost::locale)
 	target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
 	target_link_libraries(Vorker PUBLIC Boost::json)
 else()

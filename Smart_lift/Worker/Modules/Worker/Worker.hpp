@@ -10,7 +10,9 @@
 #include <boost/config.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/beast.hpp>
+#include <boost/beast.hpp> 
+#include <boost/locale/encoding.hpp>
+#include <boost/locale/generator.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -76,7 +78,7 @@ public:
 			this->stop();
 			return;
 		}
-		string way = "./keysForMqtt.txt";
+		/*string way = "./keysForMqtt.txt";
 		string boof_key;
 		ifstream fin(way);
 		if (!fin.is_open())
@@ -157,7 +159,7 @@ public:
 		{
 			cerr << "No floors" << endl;
 			return;
-		}
+		}*/
 
 	}
 	~Worker()
@@ -225,15 +227,15 @@ private:
 	bool __flag_disconnect = false;
 	string __response_command;
 
-	vector<string> __key_roots; //= { "перв", "втор", "трет", "чет", "пят", "шест", "седьм", "восьм", "девят","дцат", "сорок", "десят",  "девян", "сот","сто","минус", "нулев"};
-	map<string, string> __num_roots;/*= {
-		{"минус третий", -3}, {"минус второй", -2}, {"минус первый", -1}, {"нулевой", 0},
-		{"первый", 1}, {"второй", 2}, {"третий", 3}, {"четвертый", 4}, {"пятый", 5}, {"шестой", 6}, {"седьмой", 7}, {"восьмой", 8},{"девятый", 9}, {"десятый", 10},
-		{"одиннадцатый", 11}, {"двенадцатый", 12}, {"тринадцатый", 13}, {"четырнадцатый", 14}, {"пятнадцатый", 15}, {"шестнадцатый", 16}, {"семнадцатый", 17}, {"восемнадцатый", 18},
-		{"девятнадцатый", 19}, {"двадцатый", 20}, {"двадцать первый", 21}, {"двадцать второй", 22}, {"двадцать третий", 23}, {"двадцать четвертый", 24}, {"двадцать пятый", 25},
-		{"двадцать шестой", 26}, {"двадцать седьмой", 27}, {"двадцать восьмой", 28}, {"двадцать девятый", 29}, {"тридцатый", 30}
-	};*/
-	vector<string> __mqtt_keys;
+	vector<u8string> __key_roots = { u8"перв", u8"втор", u8"трет", u8"чет", u8"пят", u8"шест", u8"седьм", u8"восьм", u8"девят",u8"дцат", u8"сорок", u8"десят",  u8"девян", u8"сот",u8"сто",u8"минус", u8"нулев"};
+	map<u8string, int> __num_roots= {
+		{u8"минус третий", -3}, {u8"минус второй", -2}, {u8"минус первый", -1}, {u8"нулевой", 0},
+		{u8"первый", 1}, {u8"второй", 2}, {u8"третий", 3}, {u8"четвертый", 4}, {u8"пятый", 5}, {u8"шестой", 6}, {u8"седьмой", 7}, {u8"восьмой", 8},{u8"девятый", 9}, {u8"десятый", 10},
+		{u8"одиннадцатый", 11}, {u8"двенадцатый", 12}, {u8"тринадцатый", 13}, {u8"четырнадцатый", 14}, {u8"пятнадцатый", 15}, {u8"шестнадцатый", 16}, {u8"семнадцатый", 17}, {u8"восемнадцатый", 18},
+		{u8"девятнадцатый", 19}, {u8"двадцатый", 20}, {u8"двадцать первый", 21}, {u8"двадцать второй", 22}, {u8"двадцать третий", 23}, {u8"двадцать четвертый", 24}, {u8"двадцать пятый", 25},
+		{u8"двадцать шестой", 26}, {u8"двадцать седьмой", 27}, {u8"двадцать восьмой", 28}, {u8"двадцать девятый", 29}, {u8"тридцатый", 30}
+	};
+	vector<u8string> __mqtt_keys = { u8"этаж",u8"подъем",u8"спуск",u8"подними",u8"опусти" };
 
 	map<string, string> __config_info;
 
@@ -274,7 +276,7 @@ private:
 			return;
 		}
 		temp_send = 0;
-		cerr << __buf_send << endl;
+		//cerr << __buf_send << endl;
 		__buf_send.clear();
 		__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 	}
@@ -348,7 +350,7 @@ private:
 			__buf_json_recive = __parser.release();
 			__parser.reset();
 
-			cerr << __buf_json_recive << endl;
+			//cerr << __buf_json_recive << endl;
 			boost::json::value target = __buf_json_recive.at("target");
 			if (target == "ping")
 			{
@@ -444,7 +446,6 @@ private:
 		string comp_id = "-1";
 		string lift_block = "";
 		__response_command.clear();
-		cout << __response_command << endl;
 
 		for (size_t i = 0; i < buf_vec.size(); i++)
 		{
@@ -456,24 +457,27 @@ private:
 				break;
 			}
 		}
-		cerr << "num_house " << num_house << endl;
-		cerr << "comp_id " << comp_id << endl;
-		cerr << "lift_block " << lift_block << endl;
+		//cerr << "num_house " << num_house << endl;
+		//cerr << "comp_id " << comp_id << endl;
+		//cerr << "lift_block " << lift_block << endl;
 
 		///___search for mqtt_____/////
 		boost::json::array array_tokens = __buf_json_recive.at("request").at("body").at("request").at("nlu").at("tokens").as_array();
 		vector<string> search_mqtt;
 		bool flag_mqtt = false;
+		boost::locale::generator gen;
 		for (size_t i = 0; i < array_tokens.size(); i++)
 		{
 
-			string string_mqtt = boost::json::serialize(array_tokens[i]);
-			//remove_copy(buf_string_mqtt.begin(), buf_string_mqtt.end(), back_inserter(string_mqtt), '"');
+			string buf_string_mqtt = boost::json::serialize(array_tokens[i]);
+			string string_mqtt;
+			remove_copy(buf_string_mqtt.begin(), buf_string_mqtt.end(), back_inserter(string_mqtt), '"');
 			search_mqtt.push_back(string_mqtt);
 			for(size_t j = 0; j < __mqtt_keys.size(); j++)
 			{
-				//cerr << "array" << array_tokens[i] << " my" << __mqtt_keys[j] << endl;
-				if (array_tokens[i].as_string() == __mqtt_keys[j])
+				string buf_mqtt_key = boost::locale::conv::to_utf<char>(string(__mqtt_keys[j].begin(), __mqtt_keys[j].end()), gen(""));
+				cerr << "array" << string_mqtt << " my" << buf_mqtt_key << endl;
+				if (string_mqtt == buf_mqtt_key)
 				{
 					flag_mqtt = true;
 				}
@@ -495,18 +499,19 @@ private:
 			{
 				for (size_t j = 0; j < search_mqtt.size(); j++)
 				{
-					if (search_mqtt[j].find(__key_roots[i]) != search_mqtt[j].npos)
+					string buf_key = boost::locale::conv::to_utf<char>(string(__key_roots[i].begin(), __key_roots[i].end()), gen(""));
+					cerr << search_mqtt[j] << " my" << buf_key << endl;
+					if (search_mqtt[j].find(buf_key) != search_mqtt[j].npos)
 					{
 						bufNum += search_mqtt[j];
 					}
 				}
 			}
 			cerr << "bufNum " << bufNum << endl;
-			string string_number = "";
+			u8string string_number;
 			remove_copy(bufNum.begin(), bufNum.end(), back_inserter(string_number), '"');
-			string numFloor = __num_roots.at(string_number);
-			int number_floor = stoi(numFloor);
-			cerr << numFloor << " " << number_floor << endl;
+			int numFloor = __num_roots.at(string_number);
+			cerr << numFloor  << endl;
 			for (size_t i = 0; i < house_vec.size(); i++)
 			{
 				if (house_vec[i] == num_house && comp_vec[i] == comp_id)
@@ -530,19 +535,23 @@ private:
 					{
 						null = 0;
 					}
-					cerr << top << "" << bot << " " << null << endl;
- 					if (top >= number_floor && bot <= number_floor || null == number_floor)
+					//cerr << top << "" << bot << " " << null << endl;
+ 					if (top >= numFloor && bot <= numFloor || null == numFloor)
 					{
 						//__response_command = "перемещаю вас на " + numFloor + "этаж";
-						__response_command = __num_roots.at("command") + " " + string_number + " " + __mqtt_keys[0];
+						u8string buf_u8_resp = u8"Перемещаю вас на ";
+						__response_command = boost::locale::conv::to_utf<char>(string(buf_u8_resp.begin(), buf_u8_resp.end()), gen(""));
+						__response_command += bufNum;
+						buf_u8_resp = u8" этаж";
+						__response_command += boost::locale::conv::to_utf<char>(string(buf_u8_resp.begin(), buf_u8_resp.end()), gen(""));
 						break;
 					}
 				}
 			}
 			cerr << "mqtt ";
 			cerr << __response_command << endl;
-			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(__response_command), lift_block, number_floor));
-			cerr << __buf_send << endl;
+			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(__response_command), lift_block, numFloor));
+			//cerr << __buf_send << endl;
 			flag_mqtt = false;
 		}
 		else
@@ -585,6 +594,7 @@ private:
 				{
 					string buf_variant;
 					remove_copy(vector_variants[j].begin(), vector_variants[j].end(), back_inserter(buf_variant), '"');
+					cerr << command << " " << buf_variant << endl;
 					if (command == buf_variant)
 					{
 						if (num_house == house_vec[i] && comp_id == comp_vec[i])
@@ -602,7 +612,9 @@ private:
 			}
 			else
 			{
-				__response_command.append("Извините, я не знаю такой команды, пожалуйста, перефразируйте");
+				u8string buf_resp_u8 = u8"Извините, я не знаю такой команды, пожалуйста, перефразируйте";
+				__response_command.clear();
+				__response_command = boost::locale::conv::to_utf<char>(string(buf_resp_u8.begin(), buf_resp_u8.end()), gen(""));
 				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(__response_command)));
 				cerr << __buf_send << endl;
 			}
@@ -611,11 +623,11 @@ private:
 	}
 	boost::json::object __getRespToMS(string respText)
 	{
-		return boost::json::object({ {"response",{
-											{"text", respText},
-											{"tts", respText},
-											{"end_session", "false"}
-										}} });
+		return boost::json::object({
+									{"text", respText},
+									{"tts", respText},
+									{"end_session", false}
+									});
 	}
 
 

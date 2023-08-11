@@ -293,7 +293,7 @@ void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::j
     /*------------*/
     try {
         if (target == "static_message") {
-            response_data = data.at("response_body").as_object();
+            response_data = data.at("response").at("response_body").as_object();
         }
         else if (target == "move_lift") {
             if (__sessions_mqtt->size() == 0) {
