@@ -229,11 +229,6 @@ private:
 		__log->writeLog(0, "DataBase", "Send_response_command");
 		__log->writeTempLog(0, "DataBase", "Send_response_command");
 		__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-		if (__flag_wrong_connect)
-		{
-			stop();
-				__flag_wrong_connect = false;
-		}
 	}
 	void __sendCommand(const boost::system::error_code& eC, size_t bytes_send)
 	{
@@ -256,8 +251,17 @@ private:
 		}
 		temp_send = 0;
 		__buf_send.clear();
-		__log->writeTempLog(0, "DataBase", "Recieve_request");
-		__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		if (__flag_wrong_connect)
+		{
+			__flag_wrong_connect = false;
+			stop();
+		}
+		else
+
+		{
+			__log->writeTempLog(0, "DataBase", "Recieve_request");
+			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
 	}
 
 	string __checkCommand(char* __bufRecieve, size_t bytes_recieve)

@@ -78,88 +78,6 @@ public:
 			this->stop();
 			return;
 		}
-		/*string way = "./keysForMqtt.txt";
-		string boof_key;
-		ifstream fin(way);
-		if (!fin.is_open())
-		{
-			cerr << "no keys for mqtt" << endl;
-			return;
-		}
-		else
-		{
-			getline(fin, boof_key);
-			fin.close();
-		}
-		int num = boof_key.find(",");
-		if (num != boof_key.npos)
-		{
-			while (num != boof_key.npos)
-			{
-				string buf_string;
-				buf_string.assign(boof_key, 0, num);
-				boof_key.erase(0, buf_string.size() + 1);
-				__mqtt_keys.push_back(buf_string);
-				num = boof_key.find(",");
-			}
-			__mqtt_keys.push_back(boof_key);
-		}
-		else
-		{
-			__mqtt_keys.push_back(boof_key);
-		}
-
-		way = "./keysForFloors.txt";
-		ifstream fina(way);
-		if (!fina.is_open())
-		{
-			cerr << "no keys for floors" << endl;
-			return;
-		}
-		else
-		{
-			getline(fina, boof_key);
-			fina.close();
-		}
-		num = boof_key.find(",");
-		if (num != boof_key.npos)
-		{
-			while (num != boof_key.npos)
-			{
-				string buf_string;
-				buf_string.assign(boof_key, 0, num);
-				boof_key.erase(0, buf_string.size() + 1);
-				__key_roots.push_back(buf_string);
-				num = boof_key.find(",");
-			}
-			__key_roots.push_back(boof_key);
-		}
-		else
-		{
-			__key_roots.push_back(boof_key);
-		}
-		way = "./numberFloors.txt";
-		ifstream fins(way);
-		if (fins.is_open())
-		{
-			while (!fins.eof())
-			{
-				string boof;
-				string key;
-				getline(fins, boof);
-				size_t border = boof.find(":");
-				key.append(boof, 0, border);
-				boof.erase(0, border + 1);
-				cerr << key << " " << boof << endl;
-				__num_roots[key] = boof;
-			}
-			fin.close();
-		}
-		else
-		{
-			cerr << "No floors" << endl;
-			return;
-		}*/
 
 	}
 	~Worker()
@@ -416,9 +334,10 @@ private:
 		vector<string> fields_phrases = { "ComplexId", "HouseNumber", "KeyWords", "Response" };
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
 
+		queue<string> conditions;
 		cout << __db_log << " " << __db_pas << endl;
 		cout << __ip_db << " " << __port_db << endl;
-		__db_client->setQuerys(tables, fields);
+		__db_client->setQuerys(tables, fields, conditions);
 		__db_client->start();
 	}
 
