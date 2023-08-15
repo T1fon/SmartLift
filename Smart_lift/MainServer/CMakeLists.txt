@@ -63,6 +63,6 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_link_libraries(MainServer PUBLIC OpenSSL::Crypto)
 	
 else()
-	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
-	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")
+	message(CONFIG " пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Boost пїЅпїЅпїЅпїЅпїЅпїЅ 1.82.0")
+	message(CONFIG " пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OpenSSL 3.1.1")
 endif()

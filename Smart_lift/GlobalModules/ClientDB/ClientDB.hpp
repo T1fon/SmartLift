@@ -47,6 +47,7 @@ public:
 		__worker_login = worker_log;
 		__worker_password = worker_pass;
 		__name_sender = name_sender;
+		__flag_conditions = false;
 
 	}
 	~ClientDB()
@@ -67,11 +68,27 @@ public:
 			__socket->close();
 		}
 	}
-	void setQuerys(queue<string> queue_tables, queue<vector<string>> queue_fields)
+	void setQuerys(queue<string> queue_tables, queue<vector<string>> queue_fields, queue<string> queue_conditions )
 	{
 		__queue_tables = queue_tables;
 		__queue_fields = queue_fields;
+
+		if(!queue_conditions.empty())
+		{
+			__queue_conditions = queue_conditions;
+			cerr << "cond " << __queue_conditions.size() << " tables" << __queue_tables.size() << endl;
+			if (__queue_conditions.size() != __queue_tables.size())
+			{
+				cerr << "ERROR, Not full conditions WHERE( if WHERE is not needed, put " ")";
+				this->stop();
+			}
+			else
+			{
+				__flag_conditions = true;
+			}
+		}
 	}
+
 	void setCallback(callback_t callback) {
 		__callback_f = callback;
 	}
@@ -130,6 +147,17 @@ private:
 				}
 				query += __fields_name_send[__fields_name_send.size() - 1];
 				query += " FROM " + __table_name_send;
+				if (__flag_conditions)
+				{
+					query += " ";
+					string conditions = __queue_conditions.front();
+					__queue_conditions.pop();
+					query += conditions;
+					if (__queue_conditions.empty())
+					{
+						__flag_conditions = false;
+					}
+				}
 				cerr << query << endl;
 				__buf_queue_string = boost::json::serialize(json_formatter::database::request::query(__name_sender, json_formatter::database::QUERY_METHOD::SELECT, __fields_name_send, query));
 				__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
@@ -283,6 +311,7 @@ private:
 	static const int BUF_RECIVE_SIZE = 2048;
 	queue<string> __queue_tables;
 	queue<vector<string>> __queue_fields;
+	queue<string> __queue_conditions;
 	string __buf_queue_string;
 	char* __buf_recive;
 	boost::json::value __buf_json_recive;
@@ -295,6 +324,7 @@ private:
 	vector<string> __fields_name_send;
 	bool __flag_connet;
 	bool __flag_disconnect;
+	bool __flag_conditions;
 	string __name_sender;
 
 	enum __CHECK_STATUS

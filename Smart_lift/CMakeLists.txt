@@ -33,11 +33,9 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Client "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
 set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
-set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
-set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
-set(SOURCE_MODULES ${MOD_Client} ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG})
+
+set(SOURCE_MODULES ${MOD_Client} ${MOD_JSON})
 
 add_executable (Smart_lift "Smart_lift.cpp" ${SOURCE_MODULES})
 

@@ -118,7 +118,7 @@ void Session::_autorization() {
         _id = "\"" + string(_buf_json_recive.at("request").at("id").as_string().c_str()) + "\"";
         bool successful_find = false;
 
-        /*Проверить есть ли такой пользователь*/
+        /*пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ*/
         string worker_name = "";
 
         if((*_sp_db_worker_ids)->find("WorkerMId") != (*_sp_db_worker_ids)->end()){
@@ -138,7 +138,7 @@ void Session::_autorization() {
             throw exception("id not Found");
         }
         /*------------------------------------*/
-        //В случае успеха
+        //пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         _is_live = true;
         _buf_send = serialize(json_formatter::worker::response::connect(_sender));
 
@@ -286,7 +286,7 @@ bool Session::isLive() {
 }
 void Session::__emptyCallback(boost::system::error_code error, boost::json::value data)
 {
-    cerr << "Был вызван __emptyCallback" << endl;
+    cerr << "пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ __emptyCallback" << endl;
 }
 void Session::_commandAnalize() {}
 void Session::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {}

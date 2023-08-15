@@ -1,4 +1,4 @@
-#pragma once
+п»ї#pragma once
 #include "../../../GlobalModules/Log/Log.hpp"
 #include "../../../GlobalModules/Config/Config.hpp"
 #include "../../../GlobalModules/JSONFormatter/JSONFormatter.hpp"
@@ -10,7 +10,9 @@
 #include <boost/config.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/beast.hpp>
+#include <boost/beast.hpp> 
+#include <boost/locale/encoding.hpp>
+#include <boost/locale/generator.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -31,163 +33,6 @@ namespace http = beast::http;
 namespace net = boost::asio;
 using tcp = boost::asio::ip::tcp;
 
-class ClientMS : public enable_shared_from_this<ClientMS>
-{
-public:
-	ClientMS(string ipMS, string portMS, shared_ptr<tcp::socket> socket)
-	{
-		__endPoint = make_shared<tcp::endpoint>(tcp::endpoint(net::ip::address::from_string(ipMS), stoi(portMS)));
-		__socket = socket;
-		__bufRecive = new char[BUF_RECIVE_SIZE + 1];
-		fill_n(__bufRecive, BUF_RECIVE_SIZE, 0);
-		__bufJsonRecive = {};
-		__parser.reset();
-	}
-	~ClientMS()
-	{
-		this->stop();
-		delete[] __bufRecive;
-	}
-	void start()
-	{
-		__socket->async_connect(*__endPoint, boost::bind(&ClientMS::__readFromW, shared_from_this(), boost::placeholders::_1));
-	}
-	void stop()
-	{
-		if (__socket->is_open())
-		{
-			__socket->close();
-		}
-	}
-
-private:
-	void __readFromW(const boost::system::error_code& eC)
-	{
-		if (eC)
-		{
-			cerr << eC.what() << endl;
-			Sleep(2000);
-			this->stop();
-			this->start();
-			return;
-		}
-		__socket->async_receive(net::buffer(__bufRecive, BUF_RECIVE_SIZE), boost::bind(&ClientMS::__sendFromWTMS, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-	}
-	void __sendFromWTMS(const boost::system::error_code& eC, size_t bytesRecive)
-	{
-		if (eC)
-		{
-			cerr << "reciveCommand " << eC.what() << endl;
-			this->stop();
-			this->start();
-			return;
-		}
-		/*if (__reciveCheck(bytesRecive, boost::bind(&Client::__reciveCommand, shared_from_this(), boost::lambda2::_1, boost::lambda2::_2)) == __CHECK_STATUS::FAIL)
-		{
-			return;
-		}*/
-		try {
-			__parser.write(__bufRecive, bytesRecive);
-		}
-		catch (exception& e) {
-			cerr << e.what() << endl;
-		}
-		cout << __bufRecive << endl;
-		fill_n(__bufRecive, BUF_RECIVE_SIZE, 0);
-
-		if (!__parser.done()) {
-			cerr << "connectAnalize json not full" << endl;
-			__socket->async_receive(boost::asio::buffer(__bufRecive, BUF_RECIVE_SIZE), boost::bind(&ClientMS::__sendFromWTMS, shared_from_this(),
-				boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		try {
-			__parser.finish();
-			__bufJsonRecive = __parser.release();
-			__parser.reset();
-		}
-		catch (exception& e) {
-			__parser.reset();
-			__bufJsonRecive = {};
-			cerr << "_reciveCheck " << e.what();
-			return;
-		}
-		__socket->async_send(net::buffer(__bufQueueString, __bufQueueString.size()), boost::bind(&ClientMS::__resFromMStW, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-	}
-	void __resFromMStW(const boost::system::error_code& eC, size_t bytesSend)
-	{
-		if (eC)
-		{
-			cerr << "sendConnect" << eC.what() << endl;
-			this->stop();
-			this->start();
-			return;
-		}
-		static size_t tempBytesSend = 0;
-		/*if (__sendCheck(bytesSend, tempBytesSend, boost::bind(&Client::__sendConnect, shared_from_this(), boost::lambda2::_1, boost::lambda2::_2)) == __CHECK_STATUS::FAIL) {
-			return;
-		}*/
-		tempBytesSend += bytesSend;
-		if (__bufQueueString.size() != tempBytesSend) {
-			__socket->async_send(boost::asio::buffer(__bufQueueString.c_str() + tempBytesSend, (__bufQueueString.size() - tempBytesSend)),
-				boost::bind(&ClientMS::__resFromMStW, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		tempBytesSend = 0;
-		__bufQueueString.clear();
-		__socket->async_receive(net::buffer(__bufRecive, BUF_RECIVE_SIZE), boost::bind(&ClientMS::__sendResTW, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-	}
-	void __sendResTW(const boost::system::error_code& eC, size_t bytesRecive)
-	{
-		if (eC)
-		{
-			cerr << "reciveCommand " << eC.what() << endl;
-			this->stop();
-			this->start();
-			return;
-		}
-		/*if (__reciveCheck(bytesRecive, boost::bind(&Client::__reciveCommand, shared_from_this(), boost::lambda2::_1, boost::lambda2::_2)) == __CHECK_STATUS::FAIL)
-		{
-			return;
-		}*/
-		try {
-			__parser.write(__bufRecive, bytesRecive);
-		}
-		catch (exception& e) {
-			cerr << e.what() << endl;
-		}
-		cout << __bufRecive << endl;
-		fill_n(__bufRecive, BUF_RECIVE_SIZE, 0);
-
-		if (!__parser.done()) {
-			cerr << "connectAnalize json not full" << endl;
-			__socket->async_receive(boost::asio::buffer(__bufRecive, BUF_RECIVE_SIZE), boost::bind(&ClientMS::__sendResTW, shared_from_this(),
-				boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		try {
-			__parser.finish();
-			__bufJsonRecive = __parser.release();
-			__parser.reset();
-		}
-		catch (exception& e) {
-			__parser.reset();
-			__bufJsonRecive = {};
-			cerr << "_reciveCheck " << e.what();
-			return;
-		}
-		__socket->async_send(net::buffer(__bufQueueString, __bufQueueString.size()), boost::bind(&ClientMS::__readFromW, shared_from_this(), boost::placeholders::_1));
-	}
-
-	shared_ptr<tcp::endpoint> __endPoint;
-	shared_ptr<tcp::socket> __socket;
-	static const int BUF_RECIVE_SIZE = 2048;
-	queue<string> __queueToSend;
-	string __bufQueueString;
-	char* __bufRecive;
-	boost::json::value __bufJsonRecive;
-	boost::json::stream_parser __parser;
-};
 
 class Worker : public enable_shared_from_this<Worker>
 {
@@ -195,13 +40,13 @@ public:
 	typedef std::function<void(map<string, map<string, vector<string>>> )> _callback_t;
 	_callback_t callback;
 
-	void __сallback(map<string, map<string, vector<string>>> data)
+	void __СЃallback(map<string, map<string, vector<string>>> data)
 	{
 		setDbInfo(data);
 	}
 
 	Worker(map<string, string> conf_info, net::io_context& ioc, shared_ptr<Log> lg) :__ioc(ioc),
-		callback(boost::bind(&Worker::__сallback, this, boost::placeholders::_1))
+		callback(boost::bind(&Worker::__СЃallback, this, boost::placeholders::_1))
 	{
 		cout << 1 << endl;
 		__socket = make_shared<tcp::socket>(__ioc);
@@ -223,7 +68,7 @@ public:
 			__db_pas = __config_info.at("BD_password");
 			__socket_dB = make_shared<tcp::socket>(__ioc);
 			__db_client = make_shared<ClientDB>(__ip_db, __port_db, __db_log, __db_pas, __name, __socket_dB, callback);
-			__ms_client = make_shared<ClientMS>(__ip_ms, __port_ms, __socket);
+			__end_point = make_shared<tcp::endpoint>(tcp::endpoint(net::ip::address::from_string(__ip_ms), stoi(__port_ms)));
 
 
 		}
@@ -233,6 +78,7 @@ public:
 			this->stop();
 			return;
 		}
+
 	}
 	~Worker()
 	{
@@ -246,9 +92,8 @@ public:
 		__log->writeTempLog(0, __name, "start_server");
 		__timer->expires_from_now(boost::posix_time::hours(24));
 		__timer->async_wait(boost::bind(&Worker::__resetTimer, shared_from_this()));
-		__ms_client->start();
 		__connectToBd();
-		//__connectToMS();
+		__connectToMS();
 	}
 	void stop()
 	{
@@ -270,7 +115,6 @@ private:
 	shared_ptr<tcp::socket>__socket;
 	shared_ptr<tcp::socket> __socket_dB;
 	net::io_context& __ioc;
-	shared_ptr<ClientMS> __ms_client;
 	shared_ptr<ClientDB> __db_client;
 	shared_ptr<net::deadline_timer> __timer;
 
@@ -297,65 +141,72 @@ private:
 	boost::json::stream_parser __parser;
 	queue<string> __sender;
 	shared_ptr<Log> __log;
+	shared_ptr<tcp::endpoint> __end_point;
+	bool __flag_disconnect = false;
+	string __response_command;
 
-	vector<string> __key_roots = { "перв", "втор", "трет", "чет", "пят", "шест", "седьм", "восьм", "девят","дцат", "сорок", "десят",  "девян", "сот","сто","минус" };
-	map<string, int> __num_roots = {
-		{"минус третий", -3}, {"минус второй", -2}, {"минус первый", -1}, {"нулевой", 0},
-		{"первый", 1}, {"второй", 2}, {"третий", 3}, {"четвертый", 4}, {"пятый", 5}, {"шестой", 6}, {"седьмой", 7}, {"восьмой", 8},{"девятый", 9}, {"десятый", 10},
-		{"одиннадцатый", 11}, {"двенадцатый", 12}, {"тринадцатый", 13}, {"четырнадцатый", 14}, {"пятнадцатый", 15}, {"шестнадцатый", 16}, {"семнадцатый", 17}, {"восемнадцатый", 18},
-		{"девятнадцатый", 19}, {"двадцатый", 20}, {"двадцать первый", 21}, {"двадцать второй", 22}, {"двадцать третий", 23}, {"двадцать четвертый", 24}, {"двадцать пятый", 25},
-		{"двадцать шестой", 26}, {"двадцать седьмой", 27}, {"двадцать восьмой", 28}, {"двадцать девятый", 29}, {"тридцатый", 30}
+	vector<u8string> __key_roots = { u8"РїРµСЂРІ", u8"РІС‚РѕСЂ", u8"С‚СЂРµС‚", u8"С‡РµС‚", u8"РїСЏС‚", u8"С€РµСЃС‚", u8"СЃРµРґСЊРј", u8"РІРѕСЃСЊРј", u8"РґРµРІСЏС‚",u8"РґС†Р°С‚", u8"СЃРѕСЂРѕРє", u8"РґРµСЃСЏС‚",  u8"РґРµРІСЏРЅ", u8"СЃРѕС‚",u8"СЃС‚Рѕ",u8"РјРёРЅСѓСЃ", u8"РЅСѓР»РµРІ"};
+	map<u8string, int> __num_roots= {
+		{u8"РјРёРЅСѓСЃ С‚СЂРµС‚РёР№", -3}, {u8"РјРёРЅСѓСЃ РІС‚РѕСЂРѕР№", -2}, {u8"РјРёРЅСѓСЃ РїРµСЂРІС‹Р№", -1}, {u8"РЅСѓР»РµРІРѕР№", 0},
+		{u8"РїРµСЂРІС‹Р№", 1}, {u8"РІС‚РѕСЂРѕР№", 2}, {u8"С‚СЂРµС‚РёР№", 3}, {u8"С‡РµС‚РІРµСЂС‚С‹Р№", 4}, {u8"РїСЏС‚С‹Р№", 5}, {u8"С€РµСЃС‚РѕР№", 6}, {u8"СЃРµРґСЊРјРѕР№", 7}, {u8"РІРѕСЃСЊРјРѕР№", 8},{u8"РґРµРІСЏС‚С‹Р№", 9}, {u8"РґРµСЃСЏС‚С‹Р№", 10},
+		{u8"РѕРґРёРЅРЅР°РґС†Р°С‚С‹Р№", 11}, {u8"РґРІРµРЅР°РґС†Р°С‚С‹Р№", 12}, {u8"С‚СЂРёРЅР°РґС†Р°С‚С‹Р№", 13}, {u8"С‡РµС‚С‹СЂРЅР°РґС†Р°С‚С‹Р№", 14}, {u8"РїСЏС‚РЅР°РґС†Р°С‚С‹Р№", 15}, {u8"С€РµСЃС‚РЅР°РґС†Р°С‚С‹Р№", 16}, {u8"СЃРµРјРЅР°РґС†Р°С‚С‹Р№", 17}, {u8"РІРѕСЃРµРјРЅР°РґС†Р°С‚С‹Р№", 18},
+		{u8"РґРµРІСЏС‚РЅР°РґС†Р°С‚С‹Р№", 19}, {u8"РґРІР°РґС†Р°С‚С‹Р№", 20}, {u8"РґРІР°РґС†Р°С‚СЊ РїРµСЂРІС‹Р№", 21}, {u8"РґРІР°РґС†Р°С‚СЊ РІС‚РѕСЂРѕР№", 22}, {u8"РґРІР°РґС†Р°С‚СЊ С‚СЂРµС‚РёР№", 23}, {u8"РґРІР°РґС†Р°С‚СЊ С‡РµС‚РІРµСЂС‚С‹Р№", 24}, {u8"РґРІР°РґС†Р°С‚СЊ РїСЏС‚С‹Р№", 25},
+		{u8"РґРІР°РґС†Р°С‚СЊ С€РµСЃС‚РѕР№", 26}, {u8"РґРІР°РґС†Р°С‚СЊ СЃРµРґСЊРјРѕР№", 27}, {u8"РґРІР°РґС†Р°С‚СЊ РІРѕСЃСЊРјРѕР№", 28}, {u8"РґРІР°РґС†Р°С‚СЊ РґРµРІСЏС‚С‹Р№", 29}, {u8"С‚СЂРёРґС†Р°С‚С‹Р№", 30}
 	};
+	vector<u8string> __mqtt_keys = { u8"СЌС‚Р°Р¶",u8"РїРѕРґСЉРµРј",u8"СЃРїСѓСЃРє",u8"РїРѕРґРЅРёРјРё",u8"РѕРїСѓСЃС‚Рё" };
+
 	map<string, string> __config_info;
 
 	void __connectToMS()
 	{
-		cout << 3 << endl;
-		__log->writeTempLog(0, __name, "connect_to_server");
-		__buf_send = boost::json::serialize(json_formatter::worker::request::connect(__name, __id));
-		__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__recieveConnectToMS, shared_from_this(),
-			boost::placeholders::_1, boost::placeholders::_2));
+		__socket->async_connect(*__end_point, boost::bind(&Worker::__sendConnect, shared_from_this(), boost::placeholders::_1));
 	}
-	void __recieveConnectToMS(const boost::system::error_code& eC, size_t bytes_send)
+
+	void __sendConnect(const boost::system::error_code& eC)
 	{
 		if (eC)
 		{
-			cerr << "Send " << eC.what() << endl;
-			__log->writeLog(3, __name, "connect_to_ms");
-			__log->writeTempLog(3, __name, "connect_to_ms");
-			Sleep(1000);
-			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__recieveConnectToMS, shared_from_this(),
-				boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		static size_t temp_bytes_send = 0;
-		/*if (__sendCheck(bytesSend, tempBytesSend, boost::bind(&Client::__sendConnect, shared_from_this(), boost::lambda2::_1, boost::lambda2::_2)) == __CHECK_STATUS::FAIL) {
-			return;
-		}*/
-		temp_bytes_send += bytes_send;
-		if (__buf_send.size() != temp_bytes_send) {
-			__log->writeTempLog(0, __name, "not_full_send");
-			__socket->async_send(boost::asio::buffer(__buf_send.c_str() + temp_bytes_send, (__buf_send.size() - temp_bytes_send)),
-				boost::bind(&Worker::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		temp_bytes_send = 0;
-		__log->writeTempLog(0, __name, "recieve to_ms");
-		__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-	}
-	void __waitCommand(const boost::system::error_code& eC, size_t bytes_recive)
-	{
-		if (eC)
-		{
-			cerr << "waitCommand " << eC.what() << endl;
-			__log->writeLog(0, __name, "no_data_from_ms");
-			__log->writeTempLog(0, __name, "no_data_from_ms");
-			Sleep(1000);
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(),
-				boost::placeholders::_1, boost::placeholders::_2));
+			__log->writeLog(3, __name, "Error_failed_to_connect");
+			__log->writeTempLog(3, __name, "Error_failed_to_connect");
+			cerr << eC.message() << endl;
 			return;
 		}
 
+		__buf_send.clear();
+		__buf_send = boost::json::serialize(json_formatter::worker::request::connect(__name, __worker_id));
+		__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+	}
+
+	void __reciveConnect(const boost::system::error_code& eC, size_t bytes_send)
+	{
+		if (eC)
+		{
+			cerr << eC.message() << endl;
+			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
+		}
+		static size_t temp_send = 0;
+		temp_send += bytes_send;
+		if (temp_send != __buf_send.size())
+		{
+			__log->writeTempLog(0, "DataBase", "Not_full_json");
+			__socket->async_send(net::buffer(__buf_send.c_str() + temp_send, __buf_send.size() - temp_send), boost::bind(&Worker::__reciveConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
+		}
+		temp_send = 0;
+		//cerr << __buf_send << endl;
+		__buf_send.clear();
+		__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+	}
+
+	void __reciveCommand(const boost::system::error_code& eC, size_t bytes_recive)
+	{
+		if (eC)
+		{
+			cerr << eC.message() << endl;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
+		}
 		try
 		{
 			__parser.write(__buf_recive, bytes_recive);
@@ -367,102 +218,129 @@ private:
 		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
 		if (!__parser.done())
 		{
-			__log->writeTempLog(0, __name, "not_full_json");
 			cerr << "Connect analize json not full" << endl;
 			__log->writeTempLog(2, "DataBase", "Not_full_json");
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			return;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 		}
 		try
 		{
 			__parser.finish();
 			__buf_json_recive = __parser.release();
 			__parser.reset();
+
+			cerr << __buf_json_recive << endl;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+
 		}
 		catch (exception& e)
 		{
 			cerr << e.what() << endl;
-			__log->writeTempLog(0, __name, "error_writting");
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 		}
-		boost::json::value target = __buf_json_recive.at("target");
-		boost::json::value status = __buf_json_recive.at("response").at("status");
+	}
 
-		if (target == "ping")
+	void __sendResponse(const boost::system::error_code& eC, size_t bytes_recive)
+	{
+		if (eC)
 		{
-			__log->writeTempLog(0, __name, "ping");
-			string ping = boost::json::serialize(json_formatter::worker::response::ping(__name));
-			__buf_send = boost::json::serialize(json_formatter::worker::response::ping(__name));
+			cerr << eC.message() << endl;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
 		}
-		else if (target == "disconnect")
+		try
 		{
-			__log->writeTempLog(0, __name, "disconnect");
-			string respDisconnect = boost::json::serialize(json_formatter::worker::response::disconnect(__name));
-			__buf_send = boost::json::serialize(json_formatter::worker::response::disconnect(__name));
+			__parser.write(__buf_recive, bytes_recive);
 		}
-		else if (target == "marussia_station_request")
+		catch (exception& e)
 		{
-			__log->writeTempLog(0, __name, "analize_response");
-			__analizeRequest();
+			cerr << e.what() << endl;
 		}
-		else if (target == "connect")
+		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
+		if (!__parser.done())
 		{
+			cerr << "Connect analize json not full" << endl;
+			__log->writeTempLog(2, "DataBase", "Not_full_json");
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
+		try
+		{
+			__parser.finish();
+			__buf_json_recive = __parser.release();
+			__parser.reset();
 
-			if (status == "success")
+			//cerr << __buf_json_recive << endl;
+			boost::json::value target = __buf_json_recive.at("target");
+			if (target == "ping")
 			{
-				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(),
-					boost::placeholders::_1, boost::placeholders::_2));
+				__buf_send = boost::json::serialize(json_formatter::worker::response::ping(__name));
 			}
-			else if (status == "fail")
+			else if (target == "disconnect")
 			{
-				__log->writeLog(3, __name, "error_connect");
-				boost::json::value fail = __buf_json_recive.at("response").at("message");
-				cerr << "error connect " << fail << endl;
-				this->stop();
-				return;
+				__buf_send = boost::json::serialize(json_formatter::worker::response::disconnect(__name));
+				__flag_disconnect = true;
 			}
+			else if (target == "marussia_station_request")
+			{
+				__analizeRequest();
+			}
+			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+
+		}
+		catch (exception& e)
+		{
+			cerr << e.what() << endl;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
+	}
+
+	void __reciveAnswer(const boost::system::error_code& eC, size_t bytes_send)
+	{
+		if (eC)
+		{
+			cerr << eC.message() << endl;
+			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
+		}
+		static size_t temp_send = 0;
+		temp_send += bytes_send;
+		if (temp_send != __buf_send.size())
+		{
+			__log->writeTempLog(0, "DataBase", "Not_full_json");
+			__socket->async_send(net::buffer(__buf_send.c_str() + temp_send, __buf_send.size() - temp_send), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			return;
+		}
+		temp_send = 0;
+		cerr << __buf_send << endl;
+		__buf_send.clear();
+		if (__flag_disconnect)
+		{
+			__flag_disconnect = false;
+			this->stop();
 		}
 		else
 		{
-			__log->writeLog(5, __name, "no_command");
-			__log->writeTempLog(5, __name, "no_command");
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__waitCommand, shared_from_this(),
-				boost::placeholders::_1, boost::placeholders::_2));
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 		}
-
-		__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__recieveConnectToMS, shared_from_this(),
-			boost::placeholders::_1, boost::placeholders::_2));
 	}
+
 	void __connectToBd()
 	{
 
 		queue<string> tables;
 		tables.push("MarussiaStation"); tables.push("House"); tables.push("StaticPhrases");
 		queue<vector<string>> fields;
-		vector<string> fields_marussia = { "ApplicationId", "ComplexId", "HouseNum" };
+		vector<string> fields_marussia = { "ApplicationId", "ComplexId", "HouseNum", "LiftBlockId"};
 		vector<string> fields_house = { "TopFloor", "BottomFloor", "NullFloor", "HouseNum", "ComplexId" };
 		vector<string> fields_phrases = { "ComplexId", "HouseNumber", "KeyWords", "Response" };
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
 
+		queue<string> conditions;
 		cout << __db_log << " " << __db_pas << endl;
 		cout << __ip_db << " " << __port_db << endl;
-		__db_client->setQuerys(tables, fields);
+		__db_client->setQuerys(tables, fields, conditions);
 		__db_client->start();
-		//__waitDbInfo();
 	}
 
-	void __waitDbInfo()
-	{
-		if (__db_info.empty())
-		{
-			__waitDbInfo();
-		}
-		else
-		{
-			__db_client->stop();
-		}
-
-	}
 	void __resetTimer()
 	{
 		__log->writeTempLog(0, __name, "__rewrite_data_base");
@@ -475,7 +353,8 @@ private:
 	{
 		__log->writeTempLog(0, __name, "__analize_response");
 		///___marussia station House number and complex id___///
-		string app_id = boost::json::serialize(__buf_json_recive.at("application").at("application_id"));
+		string app_id = boost::json::serialize(__buf_json_recive.at("request").at("station_id"));
+		cerr << "app_id" << app_id << endl;
 		map<string, vector<string>> one_table = __db_info.at("MarussiaStation");
 		vector<string> buf_vec = __db_info.at("MarussiaStation").at("ApplicationId");
 		vector<string> house_vec = __db_info.at("MarussiaStation").at("HouseNum");
@@ -485,7 +364,7 @@ private:
 		string num_house = "-1";
 		string comp_id = "-1";
 		string lift_block = "";
-		string response = "";
+		__response_command.clear();
 
 		for (size_t i = 0; i < buf_vec.size(); i++)
 		{
@@ -497,19 +376,33 @@ private:
 				break;
 			}
 		}
+		//cerr << "num_house " << num_house << endl;
+		//cerr << "comp_id " << comp_id << endl;
+		//cerr << "lift_block " << lift_block << endl;
 
 		///___search for mqtt_____/////
-		boost::json::array array_tokens = __buf_json_recive.at("request").at("nlu").at("tokens").as_array();
+		boost::json::array array_tokens = __buf_json_recive.at("request").at("body").at("request").at("nlu").at("tokens").as_array();
 		vector<string> search_mqtt;
 		bool flag_mqtt = false;
+		boost::locale::generator gen;
 		for (size_t i = 0; i < array_tokens.size(); i++)
 		{
-			search_mqtt.push_back(boost::json::serialize(array_tokens[i]));
-			if (array_tokens[i].as_string() == "этаж" || array_tokens[i].as_string() == "подъем" || array_tokens[i].as_string() == "спуск" || array_tokens[i].as_string() == "подними" || array_tokens[i].as_string() == "опусти")
+
+			string buf_string_mqtt = boost::json::serialize(array_tokens[i]);
+			string string_mqtt;
+			remove_copy(buf_string_mqtt.begin(), buf_string_mqtt.end(), back_inserter(string_mqtt), '"');
+			search_mqtt.push_back(string_mqtt);
+			for(size_t j = 0; j < __mqtt_keys.size(); j++)
 			{
-				flag_mqtt = true;
+				string buf_mqtt_key = boost::locale::conv::to_utf<char>(string(__mqtt_keys[j].begin(), __mqtt_keys[j].end()), gen(""));
+				cerr << "array" << string_mqtt << " my" << buf_mqtt_key << endl;
+				if (string_mqtt == buf_mqtt_key)
+				{
+					flag_mqtt = true;
+				}
 			}
 		}
+		cerr << "flag_mqtt " << flag_mqtt << endl;
 		if (flag_mqtt)
 		{
 			one_table.clear();
@@ -521,78 +414,139 @@ private:
 			vector<string> bot_floor = __db_info.at("House").at("BottomFloor");
 			vector<string> null_floor = __db_info.at("House").at("NullFloor");
 			string bufNum = "";
-			int floor;
 			for (size_t i = 0; i < __key_roots.size(); i++)
 			{
 				for (size_t j = 0; j < search_mqtt.size(); j++)
 				{
-					if (search_mqtt[j].find(__key_roots[i]) != search_mqtt[j].npos)
+					string buf_key = boost::locale::conv::to_utf<char>(string(__key_roots[i].begin(), __key_roots[i].end()), gen(""));
+					cerr << search_mqtt[j] << " my" << buf_key << endl;
+					if (search_mqtt[j].find(buf_key) != search_mqtt[j].npos)
 					{
 						bufNum += search_mqtt[j];
 					}
 				}
 			}
-			int numFloor = __num_roots.at(bufNum);
-
+			cerr << "bufNum " << bufNum << endl;
+			u8string string_number;
+			remove_copy(bufNum.begin(), bufNum.end(), back_inserter(string_number), '"');
+			int numFloor = __num_roots.at(string_number);
+			cerr << numFloor  << endl;
 			for (size_t i = 0; i < house_vec.size(); i++)
 			{
 				if (house_vec[i] == num_house && comp_vec[i] == comp_id)
 				{
-					if (top_floor[i] == to_string(numFloor) || bot_floor[i] == to_string(numFloor) || null_floor[i] == to_string(numFloor))
+					string boofer;
+					remove_copy(top_floor[i].begin(), top_floor[i].end(), back_inserter(boofer), '"');
+					int top = stoi(boofer);
+
+					boofer.clear();
+					remove_copy(bot_floor[i].begin(), bot_floor[i].end(), back_inserter(boofer), '"');
+					int bot = stoi(boofer);
+
+					boofer.clear();
+					remove_copy(null_floor[i].begin(), null_floor[i].end(), back_inserter(boofer), '"');
+					int null;
+					if (boofer == "-1")
 					{
-						response = "перемещаю вас на " + bufNum + "этаж";
+						null = -1;
+					}
+					else
+					{
+						null = 0;
+					}
+					//cerr << top << "" << bot << " " << null << endl;
+ 					if (top >= numFloor && bot <= numFloor || null == numFloor)
+					{
+						//__response_command = "РїРµСЂРµРјРµС‰Р°СЋ РІР°СЃ РЅР° " + numFloor + "СЌС‚Р°Р¶";
+						u8string buf_u8_resp = u8"РџРµСЂРµРјРµС‰Р°СЋ РІР°СЃ РЅР° ";
+						__response_command = boost::locale::conv::to_utf<char>(string(buf_u8_resp.begin(), buf_u8_resp.end()), gen(""));
+						__response_command += bufNum;
+						buf_u8_resp = u8" СЌС‚Р°Р¶";
+						__response_command += boost::locale::conv::to_utf<char>(string(buf_u8_resp.begin(), buf_u8_resp.end()), gen(""));
 						break;
 					}
 				}
 			}
-			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(response), lift_block, numFloor));
+			cerr << "mqtt ";
+			cerr << __response_command << endl;
+			__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_mqtt_message(__name, app_id, __getRespToMS(__response_command), lift_block, numFloor));
+			//cerr << __buf_send << endl;
+			flag_mqtt = false;
 		}
 		else
 		{
 			///_____static phrases response static phrase___///
 
-			string command = boost::json::serialize(__buf_json_recive.at("request").at("command"));
+			string buf_command = boost::json::serialize(__buf_json_recive.at("request").at("body").at("request").at("command"));
+			string command;
+			remove_copy(buf_command.begin(), buf_command.end(), back_inserter(command), '"');
 			one_table.clear();
 			one_table = __db_info.at("StaticPhrases");
 			buf_vec.clear(); house_vec.clear(); comp_vec.clear();
 			buf_vec = __db_info.at("StaticPhrases").at("KeyWords");
 			house_vec = __db_info.at("StaticPhrases").at("HouseNumber");
 			comp_vec = __db_info.at("StaticPhrases").at("ComplexId");
-
 			vector<string> resp = __db_info.at("StaticPhrases").at("Response");
-
-			response.clear();
 
 			for (size_t i = 0; i < buf_vec.size(); i++)
 			{
-				if (command == buf_vec[i])
+				string all_variants = buf_vec[i];
+				vector<string> vector_variants;
+				int num = all_variants.find(";");
+				if (num != all_variants.npos)
 				{
-					if (num_house == house_vec[i] && comp_id == comp_vec[i])
+					while (num != all_variants.npos)
 					{
-						response = resp[i];
-						break;
+						string buf_string;
+						buf_string.assign(all_variants, 0, num);
+						all_variants.erase(0, buf_string.size() + 1);
+						vector_variants.push_back(buf_string);
+						num = all_variants.find(";");
+					}
+					vector_variants.push_back(all_variants);
+				}
+				else
+				{
+					vector_variants.push_back(all_variants);
+				}
+				for(size_t j = 0; j < vector_variants.size(); j++)
+				{
+					string buf_variant;
+					remove_copy(vector_variants[j].begin(), vector_variants[j].end(), back_inserter(buf_variant), '"');
+					cerr << command << " " << buf_variant << endl;
+					if (command == buf_variant)
+					{
+						if (num_house == house_vec[i] && comp_id == comp_vec[i])
+						{
+							__response_command = resp[i];
+							break;
+						}
 					}
 				}
 			}
-			if (response != "")
+			if (!__response_command.empty())
 			{
-				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(response)));
+				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(__response_command)));
+				cerr << __buf_send << endl;
 			}
 			else
 			{
-				response = "Извините, я не знаю такой комманды, попробуйте перефразировать";
-				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(response)));
+				u8string buf_resp_u8 = u8"РР·РІРёРЅРёС‚Рµ, СЏ РЅРµ Р·РЅР°СЋ С‚Р°РєРѕР№ РєРѕРјР°РЅРґС‹, РїРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРµСЂРµС„СЂР°Р·РёСЂСѓР№С‚Рµ";
+				__response_command.clear();
+				__response_command = boost::locale::conv::to_utf<char>(string(buf_resp_u8.begin(), buf_resp_u8.end()), gen(""));
+				__buf_send = boost::json::serialize(json_formatter::worker::response::marussia_static_message(__name, app_id, __getRespToMS(__response_command)));
+				cerr << __buf_send << endl;
 			}
 		}
 
 	}
 	boost::json::object __getRespToMS(string respText)
 	{
-		return boost::json::object({ {"response",{
-											{"text", respText},
-											{"tts", respText},
-											{"end_session", "false"}
-										}} });
+		return boost::json::object({
+									{"text", respText},
+									{"tts", respText},
+									{"end_session", false}
+									});
 	}
 
 

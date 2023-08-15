@@ -73,7 +73,7 @@ void MainServer::__startServers(map<string, map<string, vector<string>>> data) {
 		cerr << "StartServers: " << e.what();
 		return;
 	}
-	/*ЗАпускаем таймер на обновление данных*/
+	/*пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ*/
 	__client_db->setCallback(bind(&MainServer::__updateDataCallback, this, _1)); 
 	__update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
 	__update_timer->async_wait(boost::bind(&MainServer::__updateTimerCallback, this, _1));

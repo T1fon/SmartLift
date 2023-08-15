@@ -1,8 +1,8 @@
-# CMakeList.txt: проект CMake для Smart_lift; включите исходный код и определения,
-# укажите здесь логику для конкретного проекта.
+# CMakeList.txt: пїЅпїЅпїЅпїЅпїЅпїЅ CMake пїЅпїЅпїЅ Smart_lift; пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 #
 
-# Добавьте источник в исполняемый файл этого проекта.
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 
 if(UNIX)
 	set(BOOST_PATH "")
@@ -62,12 +62,13 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 
 
 	target_link_libraries(Vorker PUBLIC Boost::thread)
-	#target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
-	#target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
+	target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
+	target_link_libraries(Vorker PUBLIC Boost::locale)
+	target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
 	target_link_libraries(Vorker PUBLIC Boost::json)
 else()
-	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
-	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")
+	message(CONFIG " пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Boost пїЅпїЅпїЅпїЅпїЅпїЅ 1.82.0")
+	message(CONFIG " пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OpenSSL 3.1.1")
 endif()
 
-# TODO: Добавьте тесты и целевые объекты, если это необходимо.
+# TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
