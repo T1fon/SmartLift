@@ -32,9 +32,10 @@ set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
 set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
 set(MOD_MSWorker "${MODULES}/MSWorker/MSWorker.hpp" "${MODULES}/MSWorker/MSWorker.cpp")
 set(MOD_MQTT_Broker "${MODULES}/MQTTBroker/MQTTBroker.hpp" "${MODULES}/MQTTBroker/MQTTBroker.cpp")
-set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_MSWorker} ${MOD_JSON_Formatter} ${MOD_LOG} ${MOD_CONFIG})
+set(MOD_Client_DB "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
+set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_MSWorker} ${MOD_JSON_Formatter} ${MOD_LOG} ${MOD_CONFIG} ${MOD_Client_DB})
 
-add_executable (MQTT_Worker "main.cpp" "MQTTWorker.cpp" "MQTTWorker.hpp" ${SOURCE_MODULES})
+add_executable (MQTT_Worker "MQTTWorker.cpp" "MQTTWorker.hpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
 find_package(OpenSSL 3.1.1 REQUIRED)

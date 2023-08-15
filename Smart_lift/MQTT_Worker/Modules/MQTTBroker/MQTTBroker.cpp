@@ -28,7 +28,7 @@ void MQTTBroker::init(){
             __wp = spep;
             __worker = spep;
             std::cout << "accept" << std::endl;
-
+            
             // Pass spep to keep lifetime.
             // It makes sure wp.lock() never return nullptr in the handlers below
             // including close_handler and error_handler.
@@ -67,11 +67,22 @@ void MQTTBroker::init(){
                     std::cout << "[server] password     : " << (password ? password.value() : "none"_mb) << std::endl;
                     std::cout << "[server] clean_session: " << std::boolalpha << clean_session << std::endl;
                     std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
-                    auto sp = __wp.lock();
-                    BOOST_ASSERT(sp);
-                    __connections.insert(sp);
-                    sp->connack(false, MQTT_NS::connect_return_code::accepted);
-                    return true;
+                    try {
+                        (*__sp_db_map_login_password)->at("\"" + username->to_string() + "\"");
+                        auto sp = __wp.lock();
+                        BOOST_ASSERT(sp);
+                        __connections.insert(sp);
+                        sp->connack(false, MQTT_NS::connect_return_code::accepted);
+                        return true;
+                    }
+                    catch (exception &e) {
+                        cout << "CLIENT NOT AUTHORIZED" << endl;
+                        auto sp = __wp.lock();
+                        BOOST_ASSERT(sp);
+                        sp->connack(false, MQTT_NS::connect_return_code::not_authorized);
+                        return true;
+                    }
+                    
                 }
             );
             ep.set_disconnect_handler(
@@ -175,7 +186,11 @@ void MQTTBroker::init(){
         }
     );
 }
-void MQTTBroker::start(){
+void MQTTBroker::start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_login_password){
+    __sp_db_map_login_password = sp_db_map_login_password;
+    for (auto i = (*__sp_db_map_login_password)->begin(); i != (*__sp_db_map_login_password)->end(); i++) {
+        cout << i->first << " " << i->second << endl;
+    }
     __server->listen();
 }
 void MQTTBroker::stop(){

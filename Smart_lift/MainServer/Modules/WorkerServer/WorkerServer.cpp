@@ -1,4 +1,4 @@
-#include "WorkerServer.hpp"
+    #include "WorkerServer.hpp"
 
 using namespace worker_server;
 
@@ -17,7 +17,8 @@ Server::~Server() {
 	this->stop();
 }
 
-void Server::start() {
+void Server::start(std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_ids) {
+    __sp_db_worker_ids = sp_db_worker_ids;
 	__accept();
     __kill_timer->expires_from_now(boost::posix_time::seconds(__TIME_KILL));
     __kill_timer->async_wait(boost::bind(&Server::__killSession, shared_from_this(), _1));
@@ -40,10 +41,10 @@ void Server::__accept() {
             switch (__worker_type) {
             case WORKER_MQTT_T:
 
-                __sessions->push_back(std::make_shared<SessionMQTT>(__sender,socket, boost::asio::deadline_timer (*__context), boost::asio::deadline_timer(*__context)));
+                __sessions->push_back(std::make_shared<SessionMQTT>(__sender,socket,__sp_db_worker_ids, boost::asio::deadline_timer (*__context), boost::asio::deadline_timer(*__context)));
                 break;
-            case WORKER_MARUSSIA_T:
-                __sessions->push_back(std::make_shared<SessionMarussia>(__sender, socket, boost::asio::deadline_timer(*__context), boost::asio::deadline_timer(*__context)));
+            case WORKER_MARUSIA_T:
+                __sessions->push_back(std::make_shared<SessionMarusia>(__sender, socket,__sp_db_worker_ids, boost::asio::deadline_timer(*__context), boost::asio::deadline_timer(*__context)));
                 break;
             }
             
@@ -89,11 +90,12 @@ ISession::~ISession() { cout << "ISESSION DELETE" << endl; delete[] _buf_recive;
 //-------------------------------------------------------------//
 
 
-Session::Session(string sender, boost::asio::ip::tcp::socket& socket,
+Session::Session(string sender, boost::asio::ip::tcp::socket& socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_ids,
     boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
     _socket(std::move(socket)),
     _ping_timer(std::move(ping_timer)), _dead_ping_timer(std::move(dead_ping_timer))
 {
+    _sp_db_worker_ids = sp_db_worker_ids;
     _callback = boost::bind(&Session::__emptyCallback, this, _1, _2);
     _sender = sender;
 }
@@ -107,14 +109,34 @@ void Session::stop() {
     if (_socket.is_open()) {
         _is_live = false;
         _socket.close();
+        _ping_timer.cancel();
+        _dead_ping_timer.cancel();
     }
 }
 void Session::_autorization() {
     try {
-        _id = _buf_json_recive.at("request").at("id").as_string();
-        cout << "ID: " << _id << endl;
-        /*Проверить есть ли такой пользователь*/
+        _id = "\"" + string(_buf_json_recive.at("request").at("id").as_string().c_str()) + "\"";
+        bool successful_find = false;
 
+        /*Проверить есть ли такой пользователь*/
+        string worker_name = "";
+
+        if((*_sp_db_worker_ids)->find("WorkerMId") != (*_sp_db_worker_ids)->end()){
+            worker_name = "WorkerMId";
+        }
+        else {
+            worker_name = "WorkerLuId";
+        }
+
+        for (auto i = (*_sp_db_worker_ids)->at(worker_name).begin(), end = (*_sp_db_worker_ids)->at(worker_name).end(); i != end; i++) {
+            if (_id == (*i)) {
+                successful_find = true;
+                break;
+            }
+        }
+        if (!successful_find) {
+            throw exception("id not Found");
+        }
         /*------------------------------------*/
         //В случае успеха
         _is_live = true;
@@ -182,6 +204,10 @@ void Session::_sendCommand(const boost::system::error_code& error, std::size_t c
     }
     temp_send_byte = 0;
     _buf_send = "";
+    if (!_is_live) {
+        this->stop();
+        return;
+    }
     if (_next_recive) {
         _next_recive = false;
         _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
@@ -264,10 +290,13 @@ void Session::__emptyCallback(boost::system::error_code error, boost::json::valu
 }
 void Session::_commandAnalize() {}
 void Session::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {}
-void Session::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback) {}
+void Session::startCommand(COMMAND_CODE_MARUSIA command_code, void* command_parametr, _callback_t callback) {}
+string Session::getId(){
+    return _id;
+}
 //-------------------------------------------------------------//
-SessionMQTT::SessionMQTT(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
-    Session(sender, socket, std::move(ping_timer), std::move(dead_ping_timer))
+SessionMQTT::SessionMQTT(string sender, boost::asio::ip::tcp::socket& socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_lu, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
+    Session(sender, socket,sp_db_worker_lu, std::move(ping_timer), std::move(dead_ping_timer))
 {}
 SessionMQTT::~SessionMQTT() {
     this->stop();
@@ -305,15 +334,15 @@ void SessionMQTT::__mqttMessage() {
 
 //-------------------------------------------------------------//
 
-SessionMarussia::SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket,
+SessionMarusia::SessionMarusia(string sender, boost::asio::ip::tcp::socket& socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_marusia,
     boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer) :
-    Session(sender, socket, std::move(ping_timer), std::move(dead_ping_timer))
+    Session(sender, socket,sp_db_worker_marusia, std::move(ping_timer), std::move(dead_ping_timer))
 {}
-SessionMarussia::~SessionMarussia() {
+SessionMarusia::~SessionMarusia() {
     this->stop();
 }
 
-void SessionMarussia::_commandAnalize() 
+void SessionMarusia::_commandAnalize() 
 {
     try {
         boost::json::value target = _buf_json_recive.at("target");
@@ -336,21 +365,21 @@ void SessionMarussia::_commandAnalize()
         cerr << "_commandAnalize " << e.what() << endl;
     }
 }
-void SessionMarussia::startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback)
+void SessionMarusia::startCommand(COMMAND_CODE_MARUSIA command_code, void* command_parametr, _callback_t callback)
 {
-    if (command_code == MARUSSIA_STATION_REQUEST) {
+    if (command_code == MARUSIA_STATION_REQUEST) {
         _callback = callback;
         marussia_station_request_t* parametr = (marussia_station_request_t*)command_parametr;
         _buf_send = serialize(json_formatter::worker::request::marussia_request(_sender, parametr->station_id, parametr->body));
         _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()), 
-                            boost::bind(&SessionMarussia::_sendCommand, shared_from_this(), _1, _2));
+                            boost::bind(&SessionMarusia::_sendCommand, shared_from_this(), _1, _2));
     }
 }
-void SessionMarussia::__staticMessage() 
+void SessionMarusia::__staticMessage() 
 {
     _callback({}, _buf_json_recive);
 }
-void SessionMarussia::__moveLift() 
+void SessionMarusia::__moveLift() 
 {
     _callback({}, _buf_json_recive);
 }

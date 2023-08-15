@@ -13,7 +13,7 @@ namespace worker_server {
     const short NO_ID = -1;
     enum WORKER_T {
         WORKER_MQTT_T = 1,
-        WORKER_MARUSSIA_T
+        WORKER_MARUSIA_T
     };
     
     class ISession {
@@ -43,7 +43,6 @@ namespace worker_server {
         virtual void _ping(const boost::system::error_code& error) = 0;
         virtual void _analizePing() = 0;
         virtual void _deadPing(const boost::system::error_code& error) = 0;
-        
     public:
         ISession();
         virtual ~ISession();
@@ -51,6 +50,7 @@ namespace worker_server {
         virtual void start() = 0;
         virtual void stop() = 0;
         virtual bool isLive() = 0;
+        virtual string getId() = 0;
     };
 
     /*-----------------------------------------------------------------------------------*/
@@ -59,8 +59,8 @@ namespace worker_server {
         enum COMMAND_CODE_MQTT {
             MOVE_LIFT = 1
         };
-        enum COMMAND_CODE_MARUSSIA {
-            MARUSSIA_STATION_REQUEST = 1
+        enum COMMAND_CODE_MARUSIA {
+            MARUSIA_STATION_REQUEST = 1
         };
     private:
         void __emptyCallback(boost::system::error_code error, boost::json::value data);
@@ -70,6 +70,7 @@ namespace worker_server {
         boost::asio::ip::tcp::socket _socket;
         boost::asio::deadline_timer _ping_timer;
         boost::asio::deadline_timer _dead_ping_timer;
+        shared_ptr<shared_ptr<map<string, vector<string>>>> _sp_db_worker_ids;
         _callback_t _callback;
 
         virtual void _autorization() override;
@@ -82,14 +83,16 @@ namespace worker_server {
         virtual void _analizePing() override;
         virtual void _deadPing(const boost::system::error_code& error) override;
     public:
-        Session(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        Session(string sender, boost::asio::ip::tcp::socket& socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_ids, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~Session();
 
         virtual void start() override;
         virtual void stop() override;
         virtual bool isLive() override;
+        virtual string getId() override;
+
         virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback);
-        virtual void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback);
+        virtual void startCommand(COMMAND_CODE_MARUSIA command_code, void* command_parametr, _callback_t callback);
     };
     /*-----------------------------------------------------------------------------------*/
     class SessionMQTT : public Session {
@@ -103,14 +106,14 @@ namespace worker_server {
             std::string lift_block_id = "";
             int floor = 0;
         };
-        SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        SessionMQTT(string sender, boost::asio::ip::tcp::socket &socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_lu, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
         virtual ~SessionMQTT();
         virtual void startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) override;
     };
 
     /*-----------------------------------------------------------------------------------*/
     
-    class SessionMarussia: public Session {
+    class SessionMarusia: public Session {
     private:
         void __staticMessage();
         void __moveLift();
@@ -121,9 +124,9 @@ namespace worker_server {
             std::string station_id = "";
             boost::json::value body = {};
         };
-        SessionMarussia(string sender, boost::asio::ip::tcp::socket& socket, boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
-        virtual ~SessionMarussia();
-        void startCommand(COMMAND_CODE_MARUSSIA command_code, void* command_parametr, _callback_t callback);
+        SessionMarusia(string sender, boost::asio::ip::tcp::socket& socket, std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_marusia,boost::asio::deadline_timer ping_timer, boost::asio::deadline_timer dead_ping_timer);
+        virtual ~SessionMarusia();
+        void startCommand(COMMAND_CODE_MARUSIA command_code, void* command_parametr, _callback_t callback);
     };
 
     /*-----------------------------------------------------------------------------------*/
@@ -137,13 +140,14 @@ namespace worker_server {
         std::shared_ptr <boost::asio::io_context> __context;
         std::shared_ptr<std::vector<std::shared_ptr<Session>>> __sessions;
         std::shared_ptr<boost::asio::deadline_timer> __kill_timer;
-        
+        std::shared_ptr<shared_ptr<map<string, vector<string>>>> __sp_db_worker_ids;
+
         void __accept();
         void __killSession(const boost::system::error_code& error);
     public:
         Server(std::shared_ptr < boost::asio::io_context> io_context, unsigned short port, WORKER_T worker_type, string sender = "Main_server");
         ~Server();
-        void start();
+        void start(std::shared_ptr<shared_ptr<map<string, vector<string>>>> sp_db_worker_ids);
         void stop();
         std::shared_ptr<std::vector<std::shared_ptr<Session>>> getSessions();
     };

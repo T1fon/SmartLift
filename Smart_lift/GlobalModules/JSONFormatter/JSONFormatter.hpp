@@ -4,6 +4,7 @@
 #include <map>
 #include <boost/json.hpp>
 
+
 namespace json_formatter{
 
 	enum ERROR_CODE {

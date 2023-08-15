@@ -4,7 +4,7 @@
 #include <set>
 #include <vector>
 #include <string>
-
+#include <map>
 #include <mqtt_server_cpp.hpp>
 
 #include <boost/lexical_cast.hpp>
@@ -62,10 +62,11 @@ namespace mqtt_broker {
         shared_ptr<MQTT_NS::server<>> __server;
         string __port;
         //shared_ptr<boost::asio::io_context> __io_ctx;
-        boost::asio::io_context* __io_ctx;
+        //boost::asio::io_context* __io_ctx;
         set<con_sp_t> __connections;
         mi_sub_con __subs;
         std::weak_ptr<con_t> __wp;
+        shared_ptr<shared_ptr<map<string, string>>> __sp_db_map_login_password;
         using packet_id_t = typename std::remove_reference_t<decltype(*__worker)>::packet_id_t;
 
         inline void __closeProc(std::set<con_sp_t>& cons, mi_sub_con& subs, con_sp_t const& con);
@@ -76,7 +77,7 @@ namespace mqtt_broker {
         ~MQTTBroker();
         void setServer(shared_ptr<MQTT_NS::server<>> server);
         void init();
-        void start();
+        void start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_login_password);
         void stop();
         con_sp_t getWorker();
 	};

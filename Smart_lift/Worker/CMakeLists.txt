@@ -11,8 +11,8 @@ else()
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
 
-	set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
-	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
+	#set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
+	#set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
 
 
 	set(MODULES "Modules")
@@ -41,7 +41,7 @@ set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER} ${MOD_CLIE
 add_executable (Vorker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
-find_package(OpenSSL 3.1.1 REQUIRED)
+#find_package(OpenSSL 3.1.1 REQUIRED)
 
 
 if(Boost_FOUND AND OpenSSL_FOUND)
@@ -57,13 +57,13 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	target_include_directories(Vorker PUBLIC ${OPENSSL_INCLUDE_DIR})
 	
 	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
-	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+	#find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
 	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 
 
 	target_link_libraries(Vorker PUBLIC Boost::thread)
-	target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
-	target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
+	#target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
+	#target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
 	target_link_libraries(Vorker PUBLIC Boost::json)
 else()
 	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")

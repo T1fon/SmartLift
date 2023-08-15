@@ -32,17 +32,12 @@ using tcp = boost::asio::ip::tcp;
 class ClientDB : public enable_shared_from_this<ClientDB>
 {
 public:
-	void __ñallback(map<string, map<string, vector<string>>> data)
-	{
-		cerr << "ClientDb no Data to Worker" << endl;
-	}
-	typedef std::function<void(map<string, map<string, vector<string>>>)> _callback_t;
-	_callback_t _callback;
+	
+	typedef std::function<void(map<string, map<string, vector<string>>>)> callback_t;
 
-	ClientDB(string ip_dB, string port_dB, string worker_log, string worker_pass, string name_sender, shared_ptr<tcp::socket> socket, _callback_t callback):
-		_callback(boost::bind(&ClientDB::__ñallback, this, boost::placeholders::_1))
+	ClientDB(string ip_dB, string port_dB, string worker_log, string worker_pass, string name_sender, shared_ptr<tcp::socket> socket)
 	{
-		_callback = callback;
+		__callback_f = boost::bind(&ClientDB::__emptyCallback, this, boost::placeholders::_1);
 		__end_point = make_shared<tcp::endpoint>(tcp::endpoint(net::ip::address::from_string(ip_dB), stoi(port_dB)));
 		__socket = socket;
 		__buf_recive = new char[BUF_RECIVE_SIZE + 1];
@@ -77,13 +72,19 @@ public:
 		__queue_tables = queue_tables;
 		__queue_fields = queue_fields;
 	}
+	void setCallback(callback_t callback) {
+		__callback_f = callback;
+	}
 	map<string, map<string, vector<string>>> getRespData()
 	{
 		return __resp_data;
 	}
 
 private:
-
+	void __emptyCallback(map<string, map<string, vector<string>>> data)
+	{
+		cerr << "ClientDb no Data to Worker" << endl;
+	}
 	void __checkConnect(const boost::system::error_code& error_code)
 	{
 		if (error_code)
@@ -141,7 +142,7 @@ private:
 		}
 		else
 		{
-			_callback(__resp_data);
+			__callback_f(__resp_data);
 			this->stop();
 		}
 
@@ -275,7 +276,7 @@ private:
 			__checkConnect(error_code);
 		}
 	}
-
+	callback_t __callback_f;
 	typedef std::function<void(boost::system::error_code, std::size_t)> __handler_t;
 	shared_ptr<tcp::endpoint> __end_point;
 	shared_ptr<tcp::socket> __socket;

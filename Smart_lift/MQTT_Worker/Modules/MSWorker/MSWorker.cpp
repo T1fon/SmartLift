@@ -1,10 +1,9 @@
 #include "MSWorker.hpp"
 using namespace std;
-MSWorker::MSWorker(string ip, string port, string id_worker, std::vector<std::string>& lu_id, boost::asio::io_context& ioc) : 
-					__lu_id(lu_id)
+MSWorker::MSWorker(string ip, string port, string id_worker, boost::asio::io_context& ioc)
 {
-	__end_point = make_shared<net::tcp::endpoint>(net::tcp::endpoint(net::address::from_string(ip), stoi(port)));
-	__socket = make_shared<net::tcp::socket>(net::tcp::socket(ioc));
+	__end_point = make_shared<net_ip::tcp::endpoint>(net_ip::tcp::endpoint(net_ip::address::from_string(ip), stoi(port)));
+	__socket = make_shared<net_ip::tcp::socket>(net_ip::tcp::socket(ioc));
 	__buf_recive = new char[BUF_RECIVE_SIZE + 1];
 	__id = id_worker;
 	__buf_send = "";
@@ -17,7 +16,8 @@ MSWorker::~MSWorker() {
 	this->stop();
 	delete[] __buf_recive;
 }
-void MSWorker::start() {
+void MSWorker::start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> lu_id_descriptor) {
+	__lu_id_descriptor = lu_id_descriptor;
 	__socket->async_connect(*__end_point, boost::bind(&MSWorker::__requestAuthentication, shared_from_this(), _1));
 }
 void MSWorker::stop() {
@@ -31,7 +31,7 @@ void MSWorker::__requestAuthentication(const boost::system::error_code& error){
 		//чтобы не спамить временное решение
 		Sleep(2000);
 		this->stop();
-		this->start();
+		this->start(__lu_id_descriptor);
 		return;
 	}
 	__buf_send = serialize(json_formatter::worker::request::connect(__WORKER_NAME, __id));
@@ -109,7 +109,7 @@ void MSWorker::__sendCommand(const boost::system::error_code& error, std::size_t
 	if (error) {
 		cerr << "sendCommand " << error.what() << endl;
 		this->stop();
-		this->start();
+		this->start(__lu_id_descriptor);
 		return;
 	}
 
@@ -127,7 +127,7 @@ void MSWorker::__reciveCommand(const boost::system::error_code& error, std::size
 	if (error) {
 		cerr << "reciveCommand " << error.what() << endl;
 		this->stop();
-		this->start();
+		this->start(__lu_id_descriptor);
 		return;
 	}
 	
@@ -172,13 +172,10 @@ void MSWorker::__responseDisconnect() {
 }
 void MSWorker::__moveLift() {
 	bool found = false;
+	std::string lb_descriptor = "";
 	try {
-		for (auto i = __lu_id.begin(); i != __lu_id.end(); i++) {
-			if ((*i) == __buf_json_recive.at("request").at("mqtt_command").at("lb_id").as_string()) {
-				found = true;
-				break;
-			}
-		}
+		lb_descriptor = (*__lu_id_descriptor)->at(__buf_json_recive.at("request").at("mqtt_command").at("lb_id").as_string().c_str());
+		found = true;
 	}
 	catch (exception& e) {
 		cerr << "__moveLift: " << e.what() << endl;
@@ -191,7 +188,7 @@ void MSWorker::__moveLift() {
 		return;
 	}
 	
-	__callback_mqtt_worker( __buf_json_recive.at("request").at("mqtt_command").at("lb_id").as_string().c_str(),
+	__callback_mqtt_worker( lb_descriptor,
 						    __buf_json_recive.at("request").at("mqtt_command").at("value").as_string().c_str(),
 							__buf_json_recive.at("request").at("station_id").as_string().c_str());
 }

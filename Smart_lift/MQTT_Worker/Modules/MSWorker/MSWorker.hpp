@@ -6,7 +6,7 @@
 
 #include "JSONFormatter/JSONFormatter.hpp"
 
-namespace net = boost::asio::ip;
+namespace net_ip = boost::asio::ip;
 //Main server client worker
 class MSWorker: public std::enable_shared_from_this<MSWorker> {
 public:
@@ -23,9 +23,9 @@ private:
 	
 	const std::string __WORKER_NAME = "Worker_MQTT";
 	std::string __id = "0";
-	std::shared_ptr<net::tcp::endpoint> __end_point;
-	std::shared_ptr<net::tcp::socket> __socket;
-	std::vector<std::string>& __lu_id;
+	std::shared_ptr<net_ip::tcp::endpoint> __end_point;
+	std::shared_ptr<net_ip::tcp::socket> __socket;
+	std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> __lu_id_descriptor;
 
 	static const int BUF_RECIVE_SIZE = 2048;
 	std::string __buf_send;
@@ -50,8 +50,8 @@ private:
 	__CHECK_STATUS __sendCheck(const size_t &count_send_byte,size_t &temp_send_byte, __handler_t &&handler);
 public:
 
-	MSWorker(std::string ip, std::string port, std::string id_worker, std::vector<std::string>& lu_id, boost::asio::io_context &ioc);
-	void start();
+	MSWorker(std::string ip, std::string port, std::string id_worker, boost::asio::io_context &ioc);
+	void start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> lu_id_descriptor);
 	void stop();
 	void setCallback(callback_mqtt_worker_t callback_mqtt_worker);
 	void successMove(std::string station_id);

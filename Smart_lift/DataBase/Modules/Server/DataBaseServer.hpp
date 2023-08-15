@@ -493,7 +493,7 @@ public:
 			__log_server->writeLog(1, "DataBase", e.what());
 			return;
 		}
-		string port = __config_info.at("port");
+		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
 
@@ -518,7 +518,7 @@ private:
 	shared_ptr<Config> __config;
 	map<string, string> __config_info;
 	static const int CONFIG_NUM_FIELDS = 1;
-	vector<string> CONFIG_FIELDS = { "port" };
+	vector<string> CONFIG_FIELDS = { "Port" };
 	shared_ptr<tcp::acceptor> __acceptor;
 	shared_ptr<net::io_context> __ioc;
 	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;
