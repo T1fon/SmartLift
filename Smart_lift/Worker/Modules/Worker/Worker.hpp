@@ -283,6 +283,7 @@ private:
 			{
 				__analizeRequest();
 			}
+			cerr << __flag_disconnect << endl;
 			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 
 		}
@@ -312,6 +313,7 @@ private:
 		temp_send = 0;
 		cerr << __buf_send << endl;
 		__buf_send.clear();
+		cerr << __flag_disconnect << endl;
 		if (__flag_disconnect)
 		{
 			__flag_disconnect = false;
@@ -335,6 +337,7 @@ private:
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
 
 		queue<string> conditions;
+		conditions.push("WHERE WorkerId = \"1\" OR WokerSecId = \"1\""); conditions.push(""); conditions.push("");
 		cout << __db_log << " " << __db_pas << endl;
 		cout << __ip_db << " " << __port_db << endl;
 		__db_client->setQuerys(tables, fields, conditions);
