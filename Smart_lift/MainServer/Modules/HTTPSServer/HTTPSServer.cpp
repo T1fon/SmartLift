@@ -363,12 +363,12 @@ boost:json::value target;
     try {
         if (target == "mqtt_message") {
             if (data.at("response").at("status") == "success") {
-                text = u8"��� ��� � ���� ��� ������?";
+                text = u8"Могу ли я ещё чем-нибудь помочь?";
                 result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
 
             }
             else {
-                text = u8"������� ���� ���������, ������� ����� � ������";
+                text = u8"Извините пожалуйста сервис временно недоступен";
                 result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
             }
             response_data =
