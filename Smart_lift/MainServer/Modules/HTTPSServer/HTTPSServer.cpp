@@ -331,7 +331,7 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
     if (target == "error") {
         /*������ ��������� ������� ������ �������� ����������*/
         /*����������� ��������� � ��� ��� ������ �������� ����������*/
-        u8string text = u8"������ �������� ����������, ������� ���� ���������, � ������� ��� ����������� ��������";
+        u8string text = u8"Извините пожалуйста сервис временно недоступен";
         string result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
         response_data =
         {
@@ -392,7 +392,7 @@ boost:json::value target;
     if (target == "error") {
         /*������ ��������� ������� ������ �������� ����������*/
         /*����������� ��������� � ��� ��� ������ �������� ����������*/
-        text = u8"������ �������� ����������, ������� ���� ���������, � �������� ��� ����������� ��������";
+        text = u8"Извините пожалуйста сервис временно недоступен";
         result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
         response_data =
         {

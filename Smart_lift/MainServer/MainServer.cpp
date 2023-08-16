@@ -55,14 +55,14 @@ void MainServer::start() {
 	
 	__loadDataBase();
 	
-	std::vector<std::thread> v;
+	/*std::vector<std::thread> v;
 	v.reserve(__count_threads - 1);
 	for (auto i = __count_threads - 1; i > 0; --i)
 		v.emplace_back(
 			[this]
 			{
 				__io_ctx->run();
-			});
+			});*/
 	__io_ctx->run();
 }
 void MainServer::__startServers(map<string, map<string, vector<string>>> data) {
