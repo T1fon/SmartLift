@@ -3,26 +3,19 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
-project ("Smart_lift")
+#project ("Smart_lift")
 
 # Включите подпроекты.
-add_subdirectory ("Smart_lift")
+#add_subdirectory ("Smart_lift")
 
 project("MainServer")
-
 add_subdirectory("Smart_lift/MainServer")
 
 project("MQTT_Worker")
-
 add_subdirectory("Smart_lift/MQTT_Worker")
-project ("Vorker")
 
+project ("Worker")
 add_subdirectory("Smart_lift/Worker")
 
 project("DataBase")
-
-add_subdirectory("Smart_lift/DataBase")
-
-project("MainServer")
-add_subdirectory("Smart_lift/MainServer")
 add_subdirectory("Smart_lift/DataBase")

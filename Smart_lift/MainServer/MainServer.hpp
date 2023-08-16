@@ -49,6 +49,7 @@ private:
 
 	queue<string> __table_name;
 	queue<vector<string>> __table_fields;
+	queue<string> __table_conditions;
 
 	void __loadDataBase();
 	void __startServers(map<string, map<string, vector<string>>> data);

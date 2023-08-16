@@ -1,4 +1,4 @@
-#pragma once
+/*
 
 #include "GlobalModules/JSONFormatter/JSONFormatter.hpp"
 #include <boost/lambda2.hpp>
@@ -68,7 +68,7 @@ private:
 	Client->setQuerys(tables, fields);
 	Client->start();
 	ioc.run();
-}
+}*/
 /*int main(int argc, char** argv)
 {
 	setlocale(LC_ALL, ".ACP");

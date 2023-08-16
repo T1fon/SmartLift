@@ -1,8 +1,3 @@
-# CMakeList.txt: ������ CMake ��� Smart_lift; �������� �������� ��� � �����������,
-# ������� ����� ������ ��� ����������� �������.
-#
-
-# �������� �������� � ����������� ���� ����� �������.
 
 if(UNIX)
 	set(BOOST_PATH "")
@@ -10,10 +5,6 @@ else()
 	set(BOOST_ROOT "../../../boost_1_82_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
-
-	#set(OPENSSL_ROOT_DIR "C:/Users/Danil Ignatev/source/repos/VatoGoL/OpenSSLBuild")
-	#set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
-
 
 	set(MODULES "Modules")
 	set(GLOBAL_MODULES "../GlobalModules")
@@ -38,34 +29,27 @@ set(MOD_CLIENT "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
 set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER} ${MOD_CLIENT})
 
 
-add_executable (Vorker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
+add_executable (Worker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
 
 find_package(Boost 1.82.0 REQUIRED)
-#find_package(OpenSSL 3.1.1 REQUIRED)
 
-
-if(Boost_FOUND AND OpenSSL_FOUND)
+if(Boost_FOUND)
 	message(CONFIG " OPENSSL_INCLUDE_DIR ${OPENSSL_INCLUDE_DIR}")
 	message(CONFIG " OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}")
 	message(CONFIG " OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR}")
 	message(CONFIG " BOOST_INCLUDEDIR ${Boost_INCLUDE_DIRS}")
 
 
-	set_property(TARGET Vorker PROPERTY CXX_STANDARD 20)
+	set_property(TARGET Worker PROPERTY CXX_STANDARD 20)
 
-	target_include_directories(Vorker PUBLIC ${Boost_INCLUDE_DIRS})
-	target_include_directories(Vorker PUBLIC ${OPENSSL_INCLUDE_DIR})
+	target_include_directories(Worker PUBLIC ${Boost_INCLUDE_DIRS})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
-	#find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic locale REQUIRED)
 	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
 
-
-	target_link_libraries(Vorker PUBLIC Boost::thread)
-	target_link_libraries(Vorker PUBLIC OpenSSL::SSL)
-	target_link_libraries(Vorker PUBLIC Boost::locale)
-	target_link_libraries(Vorker PUBLIC OpenSSL::Crypto)
-	target_link_libraries(Vorker PUBLIC Boost::json)
+	target_link_libraries(Worker PUBLIC Boost::thread)
+	target_link_libraries(Worker PUBLIC Boost::locale)
+	target_link_libraries(Worker PUBLIC Boost::json)
 else()
 	message(CONFIG " �� ����������� ���������� Boost ������ 1.82.0")
 	message(CONFIG " ��� �� ����������� ���������� OpenSSL 3.1.1")

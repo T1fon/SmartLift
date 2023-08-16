@@ -80,8 +80,8 @@ namespace https_server {
 
         void __analizeRequest();
         http::message_generator __badRequest(beast::string_view why);
-        void __callbackWorkerMarussia(boost::system::error_code error, boost::json::value data);
-        void __callbackWorkerMQTT(boost::system::error_code error, boost::json::value data);
+        void __callbackWorkerMarussia(boost::json::value data);
+        void __callbackWorkerMQTT(boost::json::value data);
         void __constructResponse(boost::json::object response_data);
     };
 

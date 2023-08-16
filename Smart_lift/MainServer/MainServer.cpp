@@ -41,7 +41,9 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__server_w_mqtt = make_shared<worker_server::Server>(__io_ctx, __port_worker_mqtt_info,worker_server::WORKER_MQTT_T);
 	__server_w_marusia = make_shared<worker_server::Server>(__io_ctx, __port_worker_marusia, worker_server::WORKER_MARUSIA_T);
 	__server_https = make_shared<https_server::Listener>(*__io_ctx, *__ssl_ctx,__port_marusia_station, __server_w_mqtt->getSessions(), __server_w_marusia->getSessions());
-	__client_db = make_shared<ClientDB>(__db_ip, to_string(__port_db), __db_login, __db_password, "Main_server", make_shared<boost::asio::ip::tcp::socket>(*__io_ctx));
+	__client_db = std::make_shared<ClientDB>(__db_ip, to_string(__port_db), __db_login, __db_password, 
+										"Main_server", std::make_shared<boost::asio::ip::tcp::socket>(*__io_ctx), 
+										bind(&MainServer::__updateDataCallback, this,_1));
 	__update_timer = make_shared<boost::asio::deadline_timer>(*__io_ctx);
 	return PROCESS_CODE::SUCCESSFUL;
 }
@@ -88,17 +90,21 @@ void MainServer::__loadDataBase() {
 	
 	__table_name.push("WorkerMarussia");
 	__table_fields.push({"WorkerMId"});
-
+	__table_conditions.push("");
+	
 	__table_name.push("WorkerLU");
 	__table_fields.push({ "WorkerLuId" });
+	__table_conditions.push("");
 
 	__table_name.push("MarussiaStation");
-	__table_fields.push({ "ApplicationId", "WorkerId", "WorkerSecId", "LiftBlockId"});
+	__table_fields.push({ "ApplicationId", "WorkerId", "WokerSecId", "LiftBlockId"});
+	__table_conditions.push("");
 
 	__table_name.push("LiftBlocks");
 	__table_fields.push({ "LiftId", "WorkerLuId", "WorkerLuSecId", "Descriptor"});
+	__table_conditions.push("");
 
-	__client_db->setQuerys(__table_name, __table_fields);
+	__client_db->setQuerys(__table_name, __table_fields, __table_conditions);
 	__client_db->start();
 }
 void MainServer::__updateData(map<string, map<string, vector<string>>> &data) {
@@ -122,7 +128,7 @@ void MainServer::__updateDataCallback(map<string, map<string, vector<string>>> d
 	}
 }
 void MainServer::__updateTimerCallback(const boost::system::error_code& error){
-	__client_db->setQuerys(__table_name, __table_fields);
+	__client_db->setQuerys(__table_name, __table_fields, __table_conditions);
 	__client_db->start();
 	__update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
 	__update_timer->async_wait(boost::bind(&MainServer::__updateTimerCallback, this,_1));

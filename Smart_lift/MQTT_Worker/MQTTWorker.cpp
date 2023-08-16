@@ -62,7 +62,9 @@ int MQTTWorker::init() {
     __ms_worker->setCallback(bind(&MQTTWorker::moveLift, this, _1, _2, _3));
     __mqtt_worker = __mqtt_broker->getWorker();
 
-    __client_db = make_shared<ClientDB>(__db_ip, to_string(__db_port), __db_login, __db_password, "Main_server", make_shared<boost::asio::ip::tcp::socket>(*__io_ctx));
+    __client_db = std::make_shared<ClientDB>(__db_ip, to_string(__db_port), __db_login, __db_password, 
+                                        "Main_server", make_shared<boost::asio::ip::tcp::socket>(*__io_ctx),
+                                        bind(&MQTTWorker::__updateDataCallback, this, _1));
     __update_timer = make_shared<boost::asio::deadline_timer>(*__io_ctx);
 
     return SUCCESSFUL;
@@ -101,9 +103,10 @@ void MQTTWorker::__loadDataBase() {
     __client_db->setCallback(bind(&MQTTWorker::__startWorkers, this, _1));
 
     __table_name.push("LiftBlocks");
-    __table_fields.push({ "LiftId", "Descriptor", "WorkerLuId", "WorkerLuSecId", "Login", "Password"});
+    __table_fields.push({ "LiftId", "Descriptor", "Login", "Password"});
+    __table_conditions.push("WHERE WorkerLuId = \"" + __id + "\" OR WorkerLuSecId = \"" + __id +"\"");
 
-    __client_db->setQuerys(__table_name, __table_fields);
+    __client_db->setQuerys(__table_name, __table_fields, __table_conditions);
     __client_db->start();
 }
 void MQTTWorker::__startWorkers(map<string, map<string, vector<string>>> data) {
@@ -129,25 +132,18 @@ void MQTTWorker::__updateData(map<string, map<string, vector<string>>>& data) {
     __sp_db_lift_blocks = temp_sp_db_lift_blocks;
     shared_ptr<map<string, string>> temp_sp_db_map_lb_descriptor = make_shared<map<string,string>>();
     shared_ptr<map<string, string>> temp_sp_db_map_login_password = make_shared<map<string, string>>();
-    size_t position = 0;
-    vector<size_t> vec_positions;
-    string temp_id = "\"" + __id + "\"";
-    for (auto i = __sp_db_lift_blocks->at("WorkerLuId").begin(),
-        i_end = __sp_db_lift_blocks->at("WorkerLuId").end(),
-        j = __sp_db_lift_blocks->at("WorkerLuSecId").begin(); i != i_end; i++,j++ ) 
-    {
-        if (temp_id == *i || temp_id == *j) {
-            vec_positions.push_back(position);
-
-        }
-        position++;
-    }
-    if (vec_positions.size() == 0) {
+    if (temp_sp_db_lift_blocks->size() == 0) {
         throw exception("Worker don't have LB");
     }
-    for (auto i = vec_positions.begin(), end = vec_positions.end(); i != end; i++) {
-        (*temp_sp_db_map_lb_descriptor)[__sp_db_lift_blocks->at("LiftId").at(*i)] = __sp_db_lift_blocks->at("Descriptor").at(*i);
-        (*temp_sp_db_map_login_password)[__sp_db_lift_blocks->at("Login").at(*i)] = __sp_db_lift_blocks->at("Password").at(*i);
+
+    for (auto i = __sp_db_lift_blocks->at("LiftId").begin(),
+         j = __sp_db_lift_blocks->at("Descriptor").begin(),
+         k = __sp_db_lift_blocks->at("Login").begin(),
+         m = __sp_db_lift_blocks->at("Password").begin(),
+         end = __sp_db_lift_blocks->at("LiftId").end(); i != end; i++, j++, k++, m++) 
+    {
+        (*temp_sp_db_map_lb_descriptor)[*i] = *j;
+        (*temp_sp_db_map_login_password)[*k] = *m;
     }
     
     __sp_db_map_lb_descriptor = temp_sp_db_map_lb_descriptor;
@@ -163,7 +159,7 @@ void MQTTWorker::__updateDataCallback(map<string, map<string, vector<string>>> d
     }
 }
 void MQTTWorker::__updateTimerCallback(const boost::system::error_code& error) {
-    __client_db->setQuerys(__table_name, __table_fields);
+    __client_db->setQuerys(__table_name, __table_fields, __table_conditions);
     __client_db->start();
     __update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
     __update_timer->async_wait(boost::bind(&MQTTWorker::__updateTimerCallback, this, _1));
@@ -179,7 +175,6 @@ int main(int argc, char** argv) {
             config_file_name = argv[++i];
         }
     }
-
 
     MQTTWorker worker(config_file_name);
     if (worker.init() != MQTTWorker::SUCCESSFUL) {

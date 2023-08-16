@@ -41,6 +41,7 @@ private:
 
 	queue<string> __table_name;
 	queue<vector<string>> __table_fields;
+	queue<string> __table_conditions;
 	shared_ptr<map<string, vector<string>>> __sp_db_lift_blocks;
 	shared_ptr<map<string, string>> __sp_db_map_lb_descriptor;
 	shared_ptr<map<string, string>> __sp_db_map_login_password;

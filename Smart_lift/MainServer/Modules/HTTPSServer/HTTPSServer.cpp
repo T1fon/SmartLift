@@ -18,7 +18,7 @@ Session::Session(tcp::socket&& socket,
     std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks): __stream(std::move(socket), ssl_ctx)
 {
     __sp_db_marusia_station = sp_db_marusia_station;
-    __sp_db_lift_blocks = __sp_db_lift_blocks;
+    __sp_db_lift_blocks = sp_db_lift_blocks;
     __sessions_marusia = sessions_marussia;
     __sessions_mqtt = sessions_mqtt;
 }
@@ -161,14 +161,14 @@ void Session::__analizeRequest()
     //�������� ���� ���������
     if (__sessions_marusia->size() == 0) {
         cerr << "__session_marussia size = 0" << endl;
-        __callbackWorkerMarussia({}, {});
+        __callbackWorkerMarussia({});
         return;
     }
     try {
         bool search_successful = false;
         
         string application_id = "\"" + string(__body_request.at("session").at("application").at("application_id").as_string().c_str()) + "\"";
-        if ((*__sp_db_marusia_station)->at("ApplicationId").at(__pos_ms_field) != application_id) {
+        if ((*__sp_db_marusia_station)->at("ApplicationId")[__pos_ms_field] != application_id) {
             __pos_ms_field = 0;
             for (auto i = (*__sp_db_marusia_station)->at("ApplicationId").begin(), end = (*__sp_db_marusia_station)->at("ApplicationId").end(); i != end; i++) {
                 if (application_id == (*i)) {
@@ -187,11 +187,12 @@ void Session::__analizeRequest()
         search_successful = false;
 
         string worker_id = (*__sp_db_marusia_station)->at("WorkerId").at(__pos_ms_field);
-        string second_worker_id = (*__sp_db_marusia_station)->at("WorkerSecId").at(__pos_ms_field);
+        string second_worker_id = (*__sp_db_marusia_station)->at("WokerSecId").at(__pos_ms_field);
         
         string temp_var;
         try {
             temp_var = __sessions_marusia->at(__pos_worker_marusia)->getId();
+            //cout << "TEMP_VAR = " << temp_var << endl;
             if (temp_var == worker_id || temp_var == second_worker_id) {
                 search_successful = true;
             }
@@ -213,7 +214,7 @@ void Session::__analizeRequest()
         }
         
         if (!search_successful) {
-            __callbackWorkerMarussia({}, {});
+            __callbackWorkerMarussia({});
             return;
         }
         
@@ -221,8 +222,9 @@ void Session::__analizeRequest()
         /*-----------------------------------------*/
 
         search_successful = false;
-        string lb_id = (*__sp_db_marusia_station)->at("LiftBlockId").at(__pos_ms_field);
-        if ((*__sp_db_lift_blocks)->at("LiftId").at(__pos_lb_field) != lb_id) {
+        string lb_id = (*__sp_db_marusia_station)->at("LiftBlockId")[__pos_ms_field];
+
+        if ((*__sp_db_lift_blocks)->at("LiftId")[__pos_lb_field] != lb_id) {
             __pos_lb_field = 0;
             for (auto i = (*__sp_db_lift_blocks)->at("LiftId").begin(), end = (*__sp_db_lift_blocks)->at("LiftId").end(); i != end; i++) {
                 if (lb_id == (*i)) {
@@ -260,7 +262,7 @@ void Session::__analizeRequest()
         }
 
         if (!search_successful) {
-            __callbackWorkerMarussia({}, {});
+            __callbackWorkerMarussia({});
             return;
         }
 
@@ -269,7 +271,7 @@ void Session::__analizeRequest()
         __request_marusia.body = __body_request;
         __request_marusia.station_id = application_id;
         __sessions_marusia->at(__pos_worker_marusia)->startCommand(worker_server::Session::COMMAND_CODE_MARUSIA::MARUSIA_STATION_REQUEST, (void*)&__request_marusia,
-            boost::bind(&Session::__callbackWorkerMarussia, this, _1, _2));
+            boost::bind(&Session::__callbackWorkerMarussia, this, _1));
     }
     catch (exception& e) {
         cerr << "__analizeRequest: " << e.what() << endl;
@@ -287,7 +289,7 @@ http::message_generator Session::__badRequest(beast::string_view why) {
     res.prepare_payload();
     return res;
 }
-void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::json::value data) {
+void Session::__callbackWorkerMarussia(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
     boost::locale::generator gen;
@@ -314,7 +316,7 @@ void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::j
             __request_mqtt.floor = data.at("response").at("MQTT_command").at("value").as_int64();
             __request_mqtt.lift_block_id = data.at("response").at("MQTT_command").at("lb_id").as_string();
             __sessions_mqtt->at(__pos_worker_lu)->startCommand(worker_server::Session::COMMAND_CODE_MQTT::MOVE_LIFT, (void*)&(__request_mqtt),
-                boost::bind(&Session::__callbackWorkerMQTT, this, _1, _2));
+                boost::bind(&Session::__callbackWorkerMQTT, this, _1));
             return;
         }
         else {
@@ -341,7 +343,7 @@ void Session::__callbackWorkerMarussia(boost::system::error_code error, boost::j
 
     __constructResponse(response_data);
 }
-void Session::__callbackWorkerMQTT(boost::system::error_code error, boost::json::value data) {
+void Session::__callbackWorkerMQTT(boost::json::value data) {
 boost:json::value target;
     boost::json::object response_data = {};
     boost::locale::generator gen;

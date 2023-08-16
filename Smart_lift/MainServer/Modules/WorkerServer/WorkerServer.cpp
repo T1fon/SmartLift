@@ -96,7 +96,7 @@ Session::Session(string sender, boost::asio::ip::tcp::socket& socket, std::share
     _ping_timer(std::move(ping_timer)), _dead_ping_timer(std::move(dead_ping_timer))
 {
     _sp_db_worker_ids = sp_db_worker_ids;
-    _callback = boost::bind(&Session::__emptyCallback, this, _1, _2);
+    _callback = boost::bind(&Session::__emptyCallback, this, _1);
     _sender = sender;
 }
 Session::~Session() {
@@ -240,9 +240,9 @@ void Session::_ping(const boost::system::error_code& error)
     _buf_send = serialize(json_formatter::worker::request::ping(_sender));
     cout << _buf_send << endl;
     _next_recive = true;
-
+    _ping_success = false;
     _dead_ping_timer.cancel();
-    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME * 2));
+    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME * 10));
     _dead_ping_timer.async_wait(boost::bind(&Session::_deadPing, shared_from_this(), _1));
 
     _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
@@ -253,6 +253,8 @@ void Session::_analizePing()
     try {
         cout << _buf_json_recive << endl;
         if (_buf_json_recive.at("response").at("status") == "success") {
+            _ping_success = true;
+            _dead_ping_timer.cancel();
             _ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
             _ping_timer.async_wait(boost::bind(&Session::_ping, shared_from_this(), _1));
         }
@@ -270,8 +272,9 @@ void Session::_analizePing()
     }
 }
 void Session::_deadPing(const boost::system::error_code& error) {
-    if (!_is_live) {
-        _dead_ping_timer.cancel();
+    if (!_ping_success) {
+        //_dead_ping_timer.cancel();
+        _is_live = false;
         cout << "DEAD PING" << endl;
         if (error) {
             cerr << error << endl;
@@ -284,9 +287,9 @@ void Session::_deadPing(const boost::system::error_code& error) {
 bool Session::isLive() {
     return _is_live;
 }
-void Session::__emptyCallback(boost::system::error_code error, boost::json::value data)
+void Session::__emptyCallback(boost::json::value data)
 {
-    cerr << "��� ������ __emptyCallback" << endl;
+    cerr << "required __emptyCallback" << endl;
 }
 void Session::_commandAnalize() {}
 void Session::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {}
@@ -329,7 +332,7 @@ void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_par
     }
 }
 void SessionMQTT::__mqttMessage() {
-    _callback({}, _buf_json_recive);
+    _callback(_buf_json_recive);
 }
 
 //-------------------------------------------------------------//
@@ -377,10 +380,10 @@ void SessionMarusia::startCommand(COMMAND_CODE_MARUSIA command_code, void* comma
 }
 void SessionMarusia::__staticMessage() 
 {
-    _callback({}, _buf_json_recive);
+    _callback(_buf_json_recive);
 }
 void SessionMarusia::__moveLift() 
 {
-    _callback({}, _buf_json_recive);
+    _callback(_buf_json_recive);
 }
 

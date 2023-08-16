@@ -33,6 +33,7 @@ namespace worker_server {
         boost::json::stream_parser _json_parser;
         boost::json::value _buf_json_recive;
         bool _next_recive = false;
+        bool _ping_success = false;
         bool _is_live = false;
         
         virtual void _autorization() = 0;
@@ -63,9 +64,9 @@ namespace worker_server {
             MARUSIA_STATION_REQUEST = 1
         };
     private:
-        void __emptyCallback(boost::system::error_code error, boost::json::value data);
+        void __emptyCallback(boost::json::value data);
     protected:
-        typedef std::function<void(boost::system::error_code, boost::json::value)> _callback_t;
+        typedef std::function<void(boost::json::value)> _callback_t;
 
         boost::asio::ip::tcp::socket _socket;
         boost::asio::deadline_timer _ping_timer;
