@@ -57,6 +57,7 @@ public:
 		__config_info = conf_info;
 		__timer = make_shared<net::deadline_timer>(__ioc);
 		__log = lg;
+		__flag_disconnect = false;
 		try
 		{
 			__ip_ms = __config_info.at("Main_server_ip");
@@ -168,7 +169,10 @@ private:
 		{
 			__log->writeLog(3, __name, "Error_failed_to_connect");
 			__log->writeTempLog(3, __name, "Error_failed_to_connect");
-			cerr << eC.message() << endl;
+			cerr << "connect" << eC.message() << endl;
+			Sleep(2000);
+			this->stop();
+			this->start();
 			return;
 		}
 
@@ -182,6 +186,7 @@ private:
 		if (eC)
 		{
 			cerr << eC.message() << endl;
+			cerr << "reciveConnect" << endl;
 			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveConnect, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
@@ -203,7 +208,7 @@ private:
 	{
 		if (eC)
 		{
-			cerr << eC.message() << endl;
+			cerr << "reciveCommand " << eC.message() << endl;
 			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
@@ -243,7 +248,7 @@ private:
 	{
 		if (eC)
 		{
-			cerr << eC.message() << endl;
+			cerr <<"SendCommand " << eC.message() << endl;
 			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
@@ -298,7 +303,7 @@ private:
 	{
 		if (eC)
 		{
-			cerr << eC.message() << endl;
+			cerr << "recieveCommand " << eC.message() << endl;
 			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
@@ -311,9 +316,7 @@ private:
 			return;
 		}
 		temp_send = 0;
-		cerr << __buf_send << endl;
 		__buf_send.clear();
-		cerr << __flag_disconnect << endl;
 		if (__flag_disconnect)
 		{
 			__flag_disconnect = false;
@@ -337,7 +340,7 @@ private:
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
 
 		queue<string> conditions;
-		conditions.push("WHERE WorkerId = \"1\" OR WokerSecId = \"1\""); conditions.push(""); conditions.push("");
+		//conditions.push("WHERE WorkerId = \"1\" OR WokerSecId = \"1\""); conditions.push(""); conditions.push("");
 		cout << __db_log << " " << __db_pas << endl;
 		cout << __ip_db << " " << __port_db << endl;
 		__db_client->setQuerys(tables, fields, conditions);
@@ -357,6 +360,8 @@ private:
 		__log->writeTempLog(0, __name, "__analize_response");
 		///___marussia station House number and complex id___///
 		string app_id = boost::json::serialize(__buf_json_recive.at("request").at("station_id"));
+
+
 		cerr << "app_id" << app_id << endl;
 		map<string, vector<string>> one_table = __db_info.at("MarussiaStation");
 		vector<string> buf_vec = __db_info.at("MarussiaStation").at("ApplicationId");
@@ -373,11 +378,17 @@ private:
 		{
 			if (app_id == buf_vec[i])
 			{
+				cerr << "num_house " << num_house << endl << "comp_id " << comp_id << endl << "lift_block " << lift_block << endl;
 				num_house = house_vec[i];
 				comp_id = comp_vec[i];
 				lift_block = lift_vec[i];
 				break;
 			}
+		}
+		if (num_house == "-1" || comp_id == "-1")
+		{
+			cerr << "error no House or comp" << endl;
+			this->stop();
 		}
 		//cerr << "num_house " << num_house << endl;
 		//cerr << "comp_id " << comp_id << endl;
@@ -519,8 +530,10 @@ private:
 					cerr << command << " " << buf_variant << endl;
 					if (command == buf_variant)
 					{
+						cerr << "num_h " << num_house << " " << house_vec[i] << endl << "comp_id " << comp_id << " " << comp_vec[i] << endl;
 						if (num_house == house_vec[i] && comp_id == comp_vec[i])
 						{
+							cerr << "resp" << resp[i] << endl;
 							__response_command = resp[i];
 							break;
 						}
