@@ -394,25 +394,32 @@ private:
 	}
 	static int __connection(void* answer, int argc, char** argv, char** az_col_name)
 	{
-		map<string, vector<string>>* buf_map = (map<string, vector<string>>*)answer;
-		for (size_t i = 0; i < argc; i++)
+		try
 		{
-			string buf_answer = argv[i];
-			string col_name = az_col_name[i];
-			vector<string> buf_vec;
-			try
+			map<string, vector<string>>* buf_map = (map<string, vector<string>>*)answer;
+			for (size_t i = 0; i < argc; i++)
 			{
-				buf_vec = buf_map->at(col_name);
-				buf_vec.push_back(buf_answer);
+				string buf_answer = argv[i];
+				string col_name = az_col_name[i];
+				vector<string> buf_vec;
+				try
+				{
+					buf_vec = buf_map->at(col_name);
+					buf_vec.push_back(buf_answer);
+				}
+				catch (exception e)
+				{
+					buf_vec.push_back(buf_answer);
+				}
+				//buf_vec.push_back(buf_answer);
+				(*buf_map)[col_name] = buf_vec;
 			}
-			catch (exception e)
-			{
-				buf_vec.push_back(buf_answer);
-			}
-			//buf_vec.push_back(buf_answer);
-			(*buf_map)[col_name] = buf_vec;
+			return 0;
 		}
-		return 0;
+		catch (exception& e)
+		{
+			cerr << e.what() << endl;
+		}
 	}
 
 
