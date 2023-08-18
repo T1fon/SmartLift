@@ -15,6 +15,7 @@ private:
 	std::shared_ptr<MQTT_NS::server<>> __mqtt_server;
 	std::shared_ptr<mqtt_broker::MQTTBroker> __mqtt_broker;
 	std::shared_ptr<MSWorker> __ms_worker;
+	//shared_ptr<mqtt_broker::con_sp_t> __mqtt_worker;
 	mqtt_broker::con_sp_t __mqtt_worker;
 	std::vector<std::thread> __v;
 	vector<string> __lu_ids = {};

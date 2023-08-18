@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
   
         // Run the I/O service on the requested number of threads
 
-    setlocale(LC_ALL, "Russian");
+    setlocale(LC_ALL, ".UTF-8");
     string config_file_name = "";
     for (int i = 1; i < argc; i++) {
         string flags = argv[i];

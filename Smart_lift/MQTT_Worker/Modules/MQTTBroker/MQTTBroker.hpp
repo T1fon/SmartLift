@@ -61,8 +61,6 @@ namespace mqtt_broker {
         con_sp_t __worker;
         shared_ptr<MQTT_NS::server<>> __server;
         string __port;
-        //shared_ptr<boost::asio::io_context> __io_ctx;
-        //boost::asio::io_context* __io_ctx;
         set<con_sp_t> __connections;
         mi_sub_con __subs;
         std::weak_ptr<con_t> __wp;

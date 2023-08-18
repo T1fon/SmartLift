@@ -60,7 +60,7 @@ int MQTTWorker::init() {
 
     __ms_worker = make_shared<MSWorker>(__main_server_ip, to_string(__main_server_info_port), __id, *__io_ctx);
     __ms_worker->setCallback(bind(&MQTTWorker::moveLift, this, _1, _2, _3));
-    __mqtt_worker = __mqtt_broker->getWorker();
+   // __mqtt_worker = make_shared<mqtt_broker::con_sp_t>(__mqtt_broker->getWorker());
 
     __client_db = std::make_shared<ClientDB>(__db_ip, to_string(__db_port), __db_login, __db_password, 
                                         "Main_server", make_shared<boost::asio::ip::tcp::socket>(*__io_ctx),
@@ -96,7 +96,9 @@ void MQTTWorker::stop() {
 }
 
 void MQTTWorker::moveLift(string lu_description, string floor_number, string station_id) {
-    __mqtt_worker->async_publish("LU" + lu_description +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}");
+    __mqtt_worker = __mqtt_broker->getWorker();
+    cout << "LU" + lu_description.substr(1, lu_description.size()-2) + "/set/cmd" << "{\"cmdlft\":[1," + floor_number + "]}" << endl;
+    __mqtt_worker->async_publish("LU" + lu_description.substr(1, lu_description.size() - 2) +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}");
     __ms_worker->successMove(station_id);
 }
 void MQTTWorker::__loadDataBase() {

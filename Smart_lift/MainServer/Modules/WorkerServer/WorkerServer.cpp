@@ -114,8 +114,10 @@ void Session::stop() {
     }
 }
 void Session::_autorization() {
+    boost::json::value analize_value = _buf_json_recive.front();
+    _buf_json_recive.pop();
     try {
-        _id = "\"" + string(_buf_json_recive.at("request").at("id").as_string().c_str()) + "\"";
+        _id = "\"" + string(analize_value.at("request").at("id").as_string().c_str()) + "\"";
         bool successful_find = false;
 
         /*��������� ���� �� ����� ������������*/
@@ -154,32 +156,37 @@ void Session::_autorization() {
 }
 Session::_CHECK_STATUS Session::_reciveCheck(const size_t& count_recive_byte, _handler_t&& handler)
 {
-    try {
-        _json_parser.write(_buf_recive, count_recive_byte);
-    }
-    catch (exception& e) {
-        cerr << e.what() << endl;
-    }
+    size_t count_byte, count_byte_write = 0;
+    for (; count_byte_write < count_recive_byte;) {
+        try {
+            count_byte = _json_parser.write_some(_buf_recive + count_byte_write);
+        }
+        catch (exception& e) {
+            cerr << e.what() << endl;
+        }
+        cout << "BUF_RECIVE " << _buf_recive << endl;
 
+        if (!_json_parser.done()) {
+            fill_n(_buf_recive, _BUF_RECIVE_SIZE, 0);
+            cerr << "_reciveCheck json not full " << endl;
+            _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), handler);
+            return _CHECK_STATUS::FAIL;
+        }
+        try {
+            _buf_json_recive.push(_json_parser.release());
+            _json_parser.reset();
+            count_byte_write += count_byte;
+        }
+        catch (exception& e) {
+            _json_parser.reset();
+            _buf_json_recive = {};
+            cerr << "_reciveCheck " << e.what();
+            return _CHECK_STATUS::FAIL;
+        }
+    }
     fill_n(_buf_recive, _BUF_RECIVE_SIZE, 0);
-
-    if (!_json_parser.done()) {
-        cerr << "_reciveCheck json not full " << endl;
-        _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), handler);
-        return _CHECK_STATUS::FAIL;
-    }
-    try {
-        _json_parser.finish();
-        _buf_json_recive = _json_parser.release();
-        _json_parser.reset();
-    }
-    catch (exception& e) {
-        _json_parser.reset();
-        _buf_json_recive = {};
-        cerr << "_reciveCheck " << e.what();
-        return _CHECK_STATUS::FAIL;
-    }
     return _CHECK_STATUS::SUCCESS;
+    
 }
 Session::_CHECK_STATUS Session::_sendCheck(const size_t& count_send_byte, size_t& temp_send_byte, _handler_t&& handler)
 {
@@ -208,6 +215,7 @@ void Session::_sendCommand(const boost::system::error_code& error, std::size_t c
         this->stop();
         return;
     }
+    cout <<"NEXT RECIVE " << _next_recive << endl;
     if (_next_recive) {
         _next_recive = false;
         _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
@@ -242,7 +250,7 @@ void Session::_ping(const boost::system::error_code& error)
     _next_recive = true;
     _ping_success = false;
     _dead_ping_timer.cancel();
-    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME * 10));
+    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME*2));
     _dead_ping_timer.async_wait(boost::bind(&Session::_deadPing, shared_from_this(), _1));
 
     _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
@@ -250,9 +258,11 @@ void Session::_ping(const boost::system::error_code& error)
 }
 void Session::_analizePing()
 {
+    boost::json::value analise_value = _buf_json_recive.front();
+    _buf_json_recive.pop();
     try {
-        cout << _buf_json_recive << endl;
-        if (_buf_json_recive.at("response").at("status") == "success") {
+        //cout << _buf_json_recive << endl;
+        if (analise_value.at("response").at("status") == "success") {
             _ping_success = true;
             _dead_ping_timer.cancel();
             _ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
@@ -260,7 +270,7 @@ void Session::_analizePing()
         }
         else {
             _is_live = false;
-            cerr << "_analizePing Error response status not equal success, status = " << _buf_json_recive.at("response").at("status") << endl;
+            cerr << "_analizePing Error response status not equal success, status = " << analise_value.at("response").at("status") << endl;
             this->stop();
             return;
         }
@@ -305,21 +315,23 @@ SessionMQTT::~SessionMQTT() {
     this->stop();
 }
 void SessionMQTT::_commandAnalize() {
-    try {
-        boost::json::value target = _buf_json_recive.at("target");
-        if (target == "ping") {
-            _analizePing();
+    for (; _buf_json_recive.size() > 0;) {
+        try {
+            boost::json::value target = _buf_json_recive.front().at("target");
+            if (target == "ping") {
+                _analizePing();
+            }
+            else if (target == "mqtt_message") {
+                /**/
+                __mqttMessage();
+            }
+            else if (target == "connect") {
+                _autorization();
+            }
         }
-        else if (target == "mqtt_message") {
-            /**/
-            __mqttMessage();
+        catch (exception& e) {
+            cerr << "_commandAnalize " << e.what() << endl;
         }
-        else if (target == "connect") {
-            _autorization();
-        }
-    }
-    catch (exception& e) {
-        cerr << "_commandAnalize " << e.what() << endl;
     }
 }
 void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {
@@ -327,12 +339,14 @@ void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_par
         _callback = callback;
         move_lift_t* parametr = (move_lift_t*)command_parametr;
         _buf_send = serialize(json_formatter::worker::request::mqtt_move(_sender, parametr->station_id, parametr->lift_block_id, parametr->floor));
+        _next_recive = true;
         _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
             boost::bind(&SessionMQTT::_sendCommand, shared_from_this(), _1, _2));
     }
 }
 void SessionMQTT::__mqttMessage() {
-    _callback(_buf_json_recive);
+    _callback(_buf_json_recive.front());
+    _buf_json_recive.pop();
 }
 
 //-------------------------------------------------------------//
@@ -348,7 +362,7 @@ SessionMarusia::~SessionMarusia() {
 void SessionMarusia::_commandAnalize() 
 {
     try {
-        boost::json::value target = _buf_json_recive.at("target");
+        boost::json::value target = _buf_json_recive.front().at("target");
         if (target == "ping") {
             _analizePing();
         }
@@ -374,16 +388,19 @@ void SessionMarusia::startCommand(COMMAND_CODE_MARUSIA command_code, void* comma
         _callback = callback;
         marussia_station_request_t* parametr = (marussia_station_request_t*)command_parametr;
         _buf_send = serialize(json_formatter::worker::request::marussia_request(_sender, parametr->station_id, parametr->body));
+        _next_recive = true;
         _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()), 
                             boost::bind(&SessionMarusia::_sendCommand, shared_from_this(), _1, _2));
     }
 }
 void SessionMarusia::__staticMessage() 
 {
-    _callback(_buf_json_recive);
+    _callback(_buf_json_recive.front());
+    _buf_json_recive.pop();
 }
 void SessionMarusia::__moveLift() 
 {
-    _callback(_buf_json_recive);
+    _callback(_buf_json_recive.front());
+    _buf_json_recive.pop();
 }
 

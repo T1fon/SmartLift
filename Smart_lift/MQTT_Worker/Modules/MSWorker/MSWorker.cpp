@@ -70,12 +70,12 @@ void MSWorker::__emptyCallback(std::string lu_id, std::string floor_number, std:
 
 MSWorker::__CHECK_STATUS MSWorker::__reciveCheck(const size_t& count_recive_byte, __handler_t&& handler) {
 	try {
-		__parser.write(__buf_recive, count_recive_byte);
+		__parser.write_some(__buf_recive, count_recive_byte);
 	}
 	catch (exception& e) {
 		cerr << e.what() << endl;
 	}
-	cout << __buf_recive << endl;
+	cout <<"\n\n BUF RECIVE " << __buf_recive << endl << endl;
 	fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
 
 	if (!__parser.done()) {
@@ -141,11 +141,11 @@ void MSWorker::__reciveCommand(const boost::system::error_code& error, std::size
 void MSWorker::__commandAnalize() {
 	try {
 		boost::json::value target = __buf_json_recive.at("target");
-		
+		cout << target << endl;
 		if (target == "ping") {
 			__responsePing();
 		}
-		else if(target == "Move_lift") {
+		else if(target == "move_lift") {
 			__moveLift();
 		}
 		else if (target == "disconnect") {
@@ -153,6 +153,9 @@ void MSWorker::__commandAnalize() {
 		}
 		else if (target == "connect") {
 			__connectAnalize();
+		}
+		else {
+			cout << "JA NE ZNAU TAKOI CELI" << endl;
 		}
 	}
 	catch (std::exception &e) {
@@ -198,6 +201,7 @@ void MSWorker::setCallback(callback_mqtt_worker_t callback_mqtt_worker) {
 void MSWorker::successMove(std::string station_id) {
 	__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, station_id,
 		json_formatter::STATUS_OPERATION::success));
+	
 	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
 		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));
 }

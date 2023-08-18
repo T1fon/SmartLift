@@ -133,9 +133,9 @@ void Session::__analizeRequest()
     //POST
     beast::error_code err_code;
 
-    std::cout << "REQUEST" << std::endl;
-    std::cout << "Base: " << __req.base() << std::endl;
-    std::cout << "Body: " << __req.body() << std::endl;
+    //std::cout << "REQUEST" << std::endl;
+    //std::cout << "Base: " << __req.base() << std::endl;
+    //std::cout << "Body: " << __req.body() << std::endl;
 
     try {
         __parser.reset();
@@ -269,7 +269,7 @@ void Session::__analizeRequest()
         /*-----------------------------------------*/
         __request_marusia = {};
         __request_marusia.body = __body_request;
-        __request_marusia.station_id = application_id;
+        __request_marusia.station_id = __body_request.at("session").at("application").at("application_id").as_string();
         __sessions_marusia->at(__pos_worker_marusia)->startCommand(worker_server::Session::COMMAND_CODE_MARUSIA::MARUSIA_STATION_REQUEST, (void*)&__request_marusia,
             boost::bind(&Session::__callbackWorkerMarussia, this, _1));
     }
@@ -313,8 +313,9 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
                 throw exception("session mqtt size = 0");
             }
             __request_mqtt.station_id = data.at("response").at("station_id").as_string();
-            __request_mqtt.floor = data.at("response").at("MQTT_command").at("value").as_int64();
-            __request_mqtt.lift_block_id = data.at("response").at("MQTT_command").at("lb_id").as_string();
+            __request_mqtt.floor = stoi(data.at("response").at("mqtt_command").at("value").as_string().c_str());
+            __request_mqtt.lift_block_id = data.at("response").at("mqtt_command").at("lb_id").as_string();
+            cout << "\n\n POSITION  " << __pos_worker_lu << endl <<endl;
             __sessions_mqtt->at(__pos_worker_lu)->startCommand(worker_server::Session::COMMAND_CODE_MQTT::MOVE_LIFT, (void*)&(__request_mqtt),
                 boost::bind(&Session::__callbackWorkerMQTT, this, _1));
             return;
@@ -331,12 +332,14 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
     if (target == "error") {
         /*������ ��������� ������� ������ �������� ����������*/
         /*����������� ��������� � ��� ��� ������ �������� ����������*/
-        u8string text = u8"Извините пожалуйста сервис временно недоступен";
-        string result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+       // u8string text = u8"Извините пожалуйста сервис временно недоступен";
+        
+        //string result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+        
         response_data =
         {
-            {"text", result_text},
-            {"tts", result_text},
+            {"text", "Извините пожалуйста сервис временно недоступен"},
+            {"tts", "Извините пожалуйста сервис временно недоступен"},
             {"end_session", true}, //mb ne nado zakrivat
         };
     }
@@ -344,7 +347,7 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
     __constructResponse(response_data);
 }
 void Session::__callbackWorkerMQTT(boost::json::value data) {
-boost:json::value target;
+    boost:json::value target;
     boost::json::object response_data = {};
     boost::locale::generator gen;
     u8string text;
@@ -363,13 +366,14 @@ boost:json::value target;
     try {
         if (target == "mqtt_message") {
             if (data.at("response").at("status") == "success") {
-                text = u8"Могу ли я ещё чем-нибудь помочь?";
-                result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
-
+                //text = u8"Могу ли я ещё чем-нибудь помочь?";
+                //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+                result_text = "Могу ли я ещё чем-нибудь помочь?";
             }
             else {
-                text = u8"Извините пожалуйста сервис временно недоступен";
-                result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+                //text = u8"Извините пожалуйста сервис временно недоступен";
+                //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+                result_text = "Извините пожалуйста сервис временно недоступен";
             }
             response_data =
             {

@@ -368,8 +368,10 @@ private:
 
 		for (size_t i = 0; i < buf_vec.size(); i++)
 		{
+			cout << app_id << " " << buf_vec[i] << endl;
 			if (app_id == buf_vec[i])
 			{
+				cerr << "num_house " << num_house << endl << "comp_id " << comp_id << endl << "lift_block " << lift_block << endl;
 				num_house = house_vec[i];
 				comp_id = comp_vec[i];
 				lift_block = lift_vec[i];
@@ -516,8 +518,10 @@ private:
 					cerr << command << " " << buf_variant << endl;
 					if (command == buf_variant)
 					{
+						cerr << "num_h " << num_house << " " << house_vec[i] << endl << "comp_id " << comp_id << " " << comp_vec[i] << endl;
 						if (num_house == house_vec[i] && comp_id == comp_vec[i])
 						{
+							cerr << "resp " << resp[i] << endl;
 							__response_command = resp[i];
 							break;
 						}
