@@ -12,6 +12,7 @@
 #include "Modules/HTTPSServer/HTTPSServer.hpp"
 #include "Modules/SSLSertificateLocalhost/Sertificate.hpp"
 #include "../GlobalModules/ClientDB/ClientDB.hpp"
+#include "Modules/NetRepeater/NetRepeater.hpp"
 
 using namespace std;
 
@@ -21,12 +22,13 @@ private:
 	string __db_ip = "";
 	string __db_login = "";
 	string __db_password = "";
-	short __port_db = 0;
-	short __port_marusia_station = 0;
-	short __port_mqtt = 0;
-	short __port_worker_mqtt = 0;
-	short __port_worker_mqtt_info = 0;
-	short __port_worker_marusia = 0;
+	int __port_db = 0;
+	int __port_marusia_station = 0;
+	int __port_mqtt = 0;
+	int __port_worker_mqtt = 0;
+	int __port_worker_mqtt_info = 0;
+	int __port_worker_marusia = 0;
+	std::vector<std::thread> __threads;
 
 	shared_ptr<boost::asio::io_context> __io_ctx;
 	shared_ptr<boost::asio::ssl::context> __ssl_ctx;
@@ -45,6 +47,7 @@ private:
 	shared_ptr<https_server::Listener> __server_https;
 	shared_ptr<worker_server::Server> __server_w_mqtt;
 	shared_ptr<worker_server::Server> __server_w_marusia;
+	shared_ptr<net_repeater::Server> __server_mqtt_repeater;
 	shared_ptr<ClientDB> __client_db;
 
 	queue<string> __table_name;
