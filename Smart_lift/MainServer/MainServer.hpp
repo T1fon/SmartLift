@@ -12,7 +12,7 @@
 #include "Modules/HTTPSServer/HTTPSServer.hpp"
 #include "Modules/SSLSertificateLocalhost/Sertificate.hpp"
 #include "../GlobalModules/ClientDB/ClientDB.hpp"
-#include "Modules/NetRepeater/NetRepeater.hpp"
+//#include "Modules/NetRepeater/NetRepeater.hpp"
 
 using namespace std;
 
@@ -47,7 +47,7 @@ private:
 	shared_ptr<https_server::Listener> __server_https;
 	shared_ptr<worker_server::Server> __server_w_mqtt;
 	shared_ptr<worker_server::Server> __server_w_marusia;
-	shared_ptr<net_repeater::Server> __server_mqtt_repeater;
+	//shared_ptr<net_repeater::Server> __server_mqtt_repeater;
 	shared_ptr<ClientDB> __client_db;
 
 	queue<string> __table_name;

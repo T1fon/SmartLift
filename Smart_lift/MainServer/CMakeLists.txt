@@ -25,7 +25,7 @@ set(OPENSSL_NO_SYSTEM_PATHS		 TRUE)
 set(OPENSSL_USE_STATIC_LIBS		 TRUE)
 set(OPENSSL_MSVC_STATIC_RT		 ON)
 
-set(MOD_Net_Repeater "${MODULES}/NetRepeater/NetRepeater.hpp" "${MODULES}/NetRepeater/NetRepeater.cpp")
+#set(MOD_Net_Repeater "${MODULES}/NetRepeater/NetRepeater.hpp" "${MODULES}/NetRepeater/NetRepeater.cpp")
 set(MOD_Config "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
 set(MOD_Log "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
 set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
@@ -33,7 +33,7 @@ set(MOD_Server "${MODULES}/WorkerServer/WorkerServer.hpp" "${MODULES}/WorkerServ
 set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
 set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
 set(MOD_Client_DB "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
-set(SOURCE_MODULES ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter} ${MOD_Log} ${MOD_Config} ${MOD_Client_DB} ${MOD_Net_Repeater})
+set(SOURCE_MODULES ${MOD_HTTPS_Server} ${MOD_Sertificate} ${MOD_Server} ${MOD_JSON_Formatter} ${MOD_Log} ${MOD_Config} ${MOD_Client_DB})
 
 add_executable (MainServer "MainServer.hpp" "MainServer.cpp" ${SOURCE_MODULES})
 

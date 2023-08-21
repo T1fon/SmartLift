@@ -45,7 +45,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 										"Main_server", std::make_shared<boost::asio::ip::tcp::socket>(*__io_ctx), 
 										bind(&MainServer::__updateDataCallback, this,_1));
 	__update_timer = make_shared<boost::asio::deadline_timer>(*__io_ctx);
-	__server_mqtt_repeater = make_shared<net_repeater::Server>(__io_ctx, __port_mqtt);
+	//__server_mqtt_repeater = make_shared<net_repeater::Server>(__io_ctx, __port_mqtt, __server_w_mqtt->getSessions());
 	return PROCESS_CODE::SUCCESSFUL;
 }
 void MainServer::stop(){
@@ -80,8 +80,8 @@ void MainServer::__startServers(map<string, map<string, vector<string>>> data) {
 	__update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
 	__update_timer->async_wait(boost::bind(&MainServer::__updateTimerCallback, this, _1));
 
-	__server_mqtt_repeater->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_lu), 
-								  make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_lift_blocks));
+	//__server_mqtt_repeater->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_lu), 
+	//							  make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_lift_blocks));
 	__server_w_mqtt->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_lu));
 	__server_w_marusia->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_marusia));
 	__server_https->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_marusia_station),

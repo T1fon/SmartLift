@@ -34,7 +34,7 @@ namespace net_repeater {
 					cerr << error.message() << endl;
 					__accept();
 				}
-				__sessions->push_back(std::make_shared<Session>(socket,boost::asio::ip::tcp::socket(*__context), boost::asio::deadline_timer(*__context)));
+				__sessions->push_back(std::make_shared<Session>(socket,boost::asio::ip::tcp::socket(*__context), boost::asio::deadline_timer(*__context), __sessions_mqtt_worker));
 				__sessions->back()->start(__db_worker_lu, __db_lift_blocks);
 				__accept();
 			});
@@ -60,7 +60,7 @@ namespace net_repeater {
 
 	/*-------------------------------------------------------*/
 
-	Session::Session(boost::asio::ip::tcp::socket& socket, boost::asio::ip::tcp::socket& socket_second, boost::asio::deadline_timer dead_timer, std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt_worker) :
+	Session::Session(boost::asio::ip::tcp::socket& socket, boost::asio::ip::tcp::socket socket_second, boost::asio::deadline_timer dead_timer, std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt_worker) :
 		__dead_timer(std::move(dead_timer))
 	{
 		__socket_first = make_shared<boost::asio::ip::tcp::socket>(move(socket));
@@ -71,6 +71,7 @@ namespace net_repeater {
 		__buf_recive_second = new char[__BUF_RECIVE_SIZE + 1];
 		fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
 		fill_n(__buf_recive_second, __BUF_RECIVE_SIZE, 0);
+		__count_connection_attemps = 0;
 	}
 	Session::~Session() { 
 		stop();
@@ -126,7 +127,8 @@ namespace net_repeater {
 
 	void Session::__sendCommandFirst(const boost::system::error_code& error, std::size_t count_send_byte){
 		if (error) {
-			cerr << "sendCommand " << error.what() << endl;
+			cerr << "__sendCommandFirst " << error.what() << endl;
+			//__requestAuthorization(error);
 			this->stop();
 			return;
 		}
@@ -137,105 +139,159 @@ namespace net_repeater {
 		}
 		temp_send_byte = 0;
 		__buf_send_first = "";
-		fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
-		//__socket.async_receive(boost::asio::buffer(__buf_recive, __BUF_RECIVE_SIZE),
-		///	boost::bind(&Session::__reciveCommand, shared_from_this(), _1, _2));
-		
+		//fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
+		//__socket_first->async_receive(boost::asio::buffer(__buf_recive_first, __BUF_RECIVE_SIZE),
+		//	boost::bind(&Session::__reciveCommandFirst, shared_from_this(), _1, _2));
 	}
 	void Session::__reciveCommandFirst(const boost::system::error_code& error, std::size_t count_recive_byte){
 		if (error) {
-			cerr << "_reciveCommand " << error.what() << endl;
+			cerr << "__reciveCommandFirst " << error.what() << endl;
 			this->stop();
 			return;
 		}
 
 		if (__its_connect) {
+			if (__sessions_mqtt_worker->size() != 0) {
+				__authorization();
+			}
+			return;
 			/*проверяем можем ли мы обработать этот лифтовой блок*/
+			
+		}
 
-			const short MQTT_SHIFT = 14;
-			const short SEPARATING_CHAR = 32;
-			string authorization_data(__buf_recive_first + MQTT_SHIFT);
-			authorization_data = authorization_data.substr(0, authorization_data.find(SEPARATING_CHAR));
-			string worker_id;
-			short count_found = 0;
-			try {
-				if (authorization_data.substr(0, 7) == "LKDS_LU") {
-					string descriptor = "\"" + authorization_data.substr(7) + "\"";
-					bool found = false;
-					string temp_id;
-					for (auto i = (*__db_lift_blocks)->at("Descriptor").begin(),
-						j = (*__db_lift_blocks)->at("WorkerLuId").begin(),
-						k = (*__db_lift_blocks)->at("WorkerLuSecId").begin(), end = (*__db_lift_blocks)->at("Descriptor").end(); i != end; i++, j++, k++)
-					{
-						if (descriptor == *i) {
-							for (auto m = __sessions_mqtt_worker->begin(), end_m = __sessions_mqtt_worker->end(); m != end_m || count_found < 2; m++) {
-								temp_id = (*m)->getId();
-								if (temp_id == *j) {
-									worker_id = *j;
-									found = true;
-									break;
-								}
-								else if (temp_id == *k) {
-									worker_id = *k;
-									found = true;
-									break;
-								}
+		__buf_send_second = __buf_recive_first;
+		fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
+		__socket_second->async_send(boost::asio::buffer(__buf_send_second, __buf_send_second.size()), bind(&Session::__sendCommandSecond, shared_from_this(), _1, _2));
+		__socket_first->async_receive(boost::asio::buffer(__buf_recive_first, __BUF_RECIVE_SIZE), bind(&Session::__reciveCommandFirst, shared_from_this(), _1, _2));
+	}
+	void Session::__sendCommandSecond(const boost::system::error_code& error, std::size_t count_send_byte) {
+		if (error) {
+			cerr << "__sendCommandSecond " << error.what() << endl;
+			__requestAuthorization(error);
+			this->stop();
+			return;
+		}
+
+		static size_t temp_send_byte = 0;
+		if (__sendCheck(__SOCKET::SECOND, count_send_byte, temp_send_byte, boost::bind(&Session::__sendCommandSecond, shared_from_this(), _1, _2)) == __CHECK_STATUS::FAIL) {
+			return;
+		}
+		temp_send_byte = 0;
+		__buf_send_second = "";
+		//if (__its_connect) {
+		//	__its_connect = false;
+		//	fill_n(__buf_recive_second, __BUF_RECIVE_SIZE, 0);
+		//	__socket_second->async_receive(boost::asio::buffer(__buf_recive_second, __BUF_RECIVE_SIZE),
+		//		boost::bind(&Session::__reciveCommandSecond, shared_from_this(), _1, _2));
+		//}
+		//fill_n(__buf_recive_second, __BUF_RECIVE_SIZE, 0);
+		//__socket_second->async_receive(boost::asio::buffer(__buf_recive_second, __BUF_RECIVE_SIZE),
+		//	boost::bind(&Session::__reciveCommandSecond, shared_from_this(), _1, _2));
+	}
+	void Session::__reciveCommandSecond(const boost::system::error_code& error, std::size_t count_recive_byte) {
+		if (error) {
+			cerr << "__reciveCommandSecond " << error.what() << endl;
+			this->stop();
+			return;
+		}
+
+		__buf_send_first = __buf_recive_second;
+		fill_n(__buf_recive_second, __BUF_RECIVE_SIZE, 0);
+		__socket_first->async_send(boost::asio::buffer(__buf_send_first, __buf_send_first.size()), bind(&Session::__sendCommandFirst, shared_from_this(), _1, _2));
+		__socket_second->async_receive(boost::asio::buffer(__buf_recive_second, __BUF_RECIVE_SIZE), bind(&Session::__reciveCommandSecond, shared_from_this(), _1, _2));
+	}
+
+	void Session::__authorization(){
+		const short MQTT_SHIFT = 14;
+		const short SEPARATING_CHAR = 32;
+		string authorization_data(__buf_recive_first + MQTT_SHIFT);
+		authorization_data = authorization_data.substr(0, authorization_data.find(SEPARATING_CHAR));
+		string worker_id;
+		short count_found = 0;
+		try {
+			if (authorization_data.substr(0, 7) == "LKDS_LU") {
+				string descriptor = "\"" + authorization_data.substr(7) + "\"";
+				bool found = false;
+				string temp_id;
+				for (auto i = (*__db_lift_blocks)->at("Descriptor").begin(),
+					j = (*__db_lift_blocks)->at("WorkerLuId").begin(),
+					k = (*__db_lift_blocks)->at("WorkerLuSecId").begin(), end = (*__db_lift_blocks)->at("Descriptor").end(); i != end; i++, j++, k++)
+				{
+					if (descriptor == *i) {
+						for (auto m = __sessions_mqtt_worker->begin(), end_m = __sessions_mqtt_worker->end(); m != end_m || count_found < 2; m++) {
+							temp_id = (*m)->getId();
+							if (temp_id == *j) {
+								worker_id = *j;
+								found = true;
+								break;
 							}
-							break;
+							else if (temp_id == *k) {
+								worker_id = *k;
+								found = true;
+								break;
+							}
 						}
-					}
-					if (!found) {
-						this->stop();
-						return;
+						break;
 					}
 				}
-				else {
+				if (!found) {
 					this->stop();
 					return;
 				}
 			}
-			catch (exception& e) {
-				cout << "NET REPEATER __reciveCommandFirst (__db_lift_blocks): " << e.what() << endl;
+			else {
+				this->stop();
+				return;
 			}
-			
-			string worker_ip;
-			string worker_port;
-			try {
-				for (auto i = (*__db_worker_lu)->at("WorkerLuId").begin(),
-					j = (*__db_worker_lu)->at("WorkerLuAdd").begin(),
-					k = (*__db_worker_lu)->at("WorkerLuPort").begin(),
-					end = (*__db_worker_lu)->at("WorkerLuId").end(); i != end; i++, j++, k++)
-				{
-					if (*i == worker_id) {
-						worker_ip = *j;
-						worker_port = *k;
-						break;
-					}
+		}
+		catch (exception& e) {
+			cout << "NET REPEATER __reciveCommandFirst (__db_lift_blocks): " << e.what() << endl;
+		}
+
+		
+		try {
+			for (auto i = (*__db_worker_lu)->at("WorkerLuId").begin(),
+				j = (*__db_worker_lu)->at("WorkerLuAdd").begin(),
+				k = (*__db_worker_lu)->at("WorkerLuPort").begin(),
+				end = (*__db_worker_lu)->at("WorkerLuId").end(); i != end; i++, j++, k++)
+			{
+				if (*i == worker_id) {
+					__worker_ip = *j;
+					__worker_port = *k;
+					break;
 				}
 			}
-			catch (exception& e) {
-				cout << "NET REPEATER __reciveCommandFirst (__db_worker_lu): " << e.what() << endl;
-			}
-
-			__its_connect = false;
-			__buf_send_second = __buf_recive_first;
-			fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
-			__socket_second->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(worker_ip), stoi(worker_port)),);
-
-			
-
-			/*----------------------------*/
-			
-			//__socket.async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
-			//	boost::bind(&Session::__reciveCommand, shared_from_this(), _1, _2));
-			//__socket.async_receive(boost::asio::buffer(__buf_recive,__BUF_RECIVE_SIZE),
-			//	boost::bind(&Session::__reciveCommand, shared_from_this(), _1, _2));
-			
-			
 		}
-		//__buf_send = __buf_recive;
-		//fill_n(__buf_recive, __BUF_RECIVE_SIZE, 0);
-		//__socket.async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
-		//	boost::bind(&Session::__reciveCommand, shared_from_this(), _1, _2));
+		catch (exception& e) {
+			cout << "NET REPEATER __reciveCommandFirst (__db_worker_lu): " << e.what() << endl;
+		}
+
+		__its_connect = false;
+		__socket_second->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(__worker_ip.substr(1, __worker_ip.size() - 2)), stoi(__worker_port.substr(1, __worker_port.size() - 2))),
+										boost::bind(&Session::__requestAuthorization,shared_from_this(), _1));
+	}
+	void Session::__requestAuthorization(const boost::system::error_code& error) {
+		if (error) {
+			cerr << error.what() << endl;
+			if(__count_connection_attemps < __MAX_COUNT_CONNECTION_ATTEMPS)
+			{
+				Sleep(2000);
+				if (__socket_second->is_open()) { __socket_second->close(); }
+				__socket_second->async_connect(boost::asio::ip::tcp::endpoint(boost::asio::ip::address::from_string(__worker_ip.substr(1, __worker_ip.size() - 2)), stoi(__worker_port.substr(1, __worker_port.size() - 2))),
+					boost::bind(&Session::__requestAuthorization, shared_from_this(), _1));
+			}
+			else {
+				this->stop();
+			}
+			__count_connection_attemps++;
+			return;
+		}
+		__count_connection_attemps = 0;
+
+		__buf_send_second = __buf_recive_first;
+		fill_n(__buf_recive_first, __BUF_RECIVE_SIZE, 0);
+		
+		__socket_second->async_send(boost::asio::buffer(__buf_send_second, __buf_send_second.size()), bind(&Session::__sendCommandSecond,shared_from_this(), _1, _2));
+		__socket_first->async_receive(boost::asio::buffer(__buf_recive_first, __BUF_RECIVE_SIZE), bind(&Session::__reciveCommandFirst, shared_from_this(), _1, _2));
 	}
 }
