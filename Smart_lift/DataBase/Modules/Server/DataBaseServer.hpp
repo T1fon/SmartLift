@@ -363,6 +363,12 @@ private:
 		cout << "query " << __query << endl;
 
 		int exit = sqlite3_open(DB_WAY, &__dB);
+		if (exit != SQLITE_OK)
+		{
+			cerr << "NO DB FILE" << endl;
+			this->stop();
+			return;
+		}
 		int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
 		sqlite3_close(__dB);
 
@@ -387,6 +393,12 @@ private:
 	void __checkConnect(string login, string password)
 	{
 		int exit = sqlite3_open(DB_WAY, &__dB);
+		if (exit != SQLITE_OK)
+		{
+			cerr << "NO DB FILE" << endl;
+			this->stop();
+			return;
+		}
 		__query.clear();
 		__query = "SELECT * FROM Accounts";
 		__buf_send.clear();
