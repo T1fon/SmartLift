@@ -58,6 +58,20 @@ public:
 		__timer = make_shared<net::deadline_timer>(__ioc);
 		__log = lg;
 		__flag_disconnect = false;
+
+	}
+	~Worker()
+	{
+		this->stop();
+		delete[] __buf_recive;
+	}
+	void start()
+	{
+		cout << 2 << endl;
+		__log->writeLog(0, __name, "start_server");
+		__log->writeTempLog(0, __name, "start_server");
+		__timer->expires_from_now(boost::posix_time::hours(24));
+		__timer->async_wait(boost::bind(&Worker::__resetTimer, shared_from_this()));
 		try
 		{
 			__ip_ms = __config_info.at("Main_server_ip");
@@ -79,20 +93,6 @@ public:
 			this->stop();
 			return;
 		}
-
-	}
-	~Worker()
-	{
-		this->stop();
-		delete[] __buf_recive;
-	}
-	void start()
-	{
-		cout << 2 << endl;
-		__log->writeLog(0, __name, "start_server");
-		__log->writeTempLog(0, __name, "start_server");
-		__timer->expires_from_now(boost::posix_time::hours(24));
-		__timer->async_wait(boost::bind(&Worker::__resetTimer, shared_from_this()));
 		__connectToBd();
 		__connectToMS();
 	}

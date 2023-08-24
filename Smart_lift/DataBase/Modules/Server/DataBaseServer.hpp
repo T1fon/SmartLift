@@ -493,11 +493,18 @@ public:
 		__buf_json_recieve = {};
 		__parser.reset();
 
+	}
+	void start()
+	{
+		cerr << 12 << endl;
+		__log->writeLog(0, "DataBase", "Connect_with_DataBase");
+		__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
 		int checkDb = sqlite3_open(DB_WAY, &__dB);
 		if (checkDb)
 		{
 			cerr << "can`t open dataBase" << endl;
 			sqlite3_close(__dB);
+			this->stop();
 			return;
 		}
 		else
@@ -505,12 +512,6 @@ public:
 			cerr << "Db open" << endl;
 			sqlite3_close(__dB);
 		}
-	}
-	void start()
-	{
-		cerr << 12 << endl;
-		__log->writeLog(0, "DataBase", "Connect_with_DataBase");
-		__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
 		//__socket->async_connect(*__endPoint, boost::bind(&DataBase::__reqAutentification, shared_from_this(), boost::placeholders::_1));
 		__reqAutentification();
 	}
@@ -533,35 +534,12 @@ public:
 class Server : public enable_shared_from_this<Server>
 {
 public:
-	Server(shared_ptr<net::io_context> io_context, string name_config_file)
+	Server(shared_ptr<net::io_context> io_context, string name_config_file, shared_ptr<Log> log_server, map<string, string> config_info)
 	{
 		__ioc = io_context;
 		__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
-		__log_server = make_shared<Log>("Log/", "./", "DataBase");
-		__config = make_shared<Config>(__log_server, "./", "", name_config_file);
-		__config->readConfig();
-		__config_info = __config->getConfigInfo();
-		if (__config_info.size() == 0)
-		{
-			__log_server->writeLog(1, "DataBase", "Config_File_not_open");
-			return;
-		}
-		else if (__config_info.size() < CONFIG_NUM_FIELDS)
-		{
-			__log_server->writeLog(1, "DataBase", "Config_File_not_full");
-		}
-		try
-		{
-			for (size_t i = 0, length = __config_info.size(); i < length; i++)
-			{
-				__config_info.at(CONFIG_FIELDS.at(i));
-			}
-		}
-		catch (exception& e)
-		{
-			__log_server->writeLog(1, "DataBase", e.what());
-			return;
-		}
+		__log_server = log_server;
+		__config_info = config_info;
 		string port = __config_info.at("port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
@@ -584,10 +562,7 @@ public:
 	}
 private:
 	shared_ptr<Log> __log_server;
-	shared_ptr<Config> __config;
 	map<string, string> __config_info;
-	static const int CONFIG_NUM_FIELDS = 1;
-	vector<string> CONFIG_FIELDS = { "port" };
 	shared_ptr<tcp::acceptor> __acceptor;
 	shared_ptr<net::io_context> __ioc;
 	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;
