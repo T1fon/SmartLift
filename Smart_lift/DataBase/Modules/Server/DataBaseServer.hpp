@@ -96,6 +96,11 @@ private:
 		temp_send = 0;
 		__buf_send.clear();
 		__log->writeTempLog(2, "DataBase", "Receiving_a_request");
+		if (__flag_wrong_connect)
+		{
+			this->stop();
+			__flag_wrong_connect = false;
+		}
 		if (__flag_send != true)
 		{
 			cerr << "not full connection" << endl;
@@ -168,12 +173,6 @@ private:
 					__flag_send = true;
 				}
 				__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__resAutentification, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-				if (__flag_wrong_connect)
-				{
-					this->stop();
-					this->start();
-					__flag_wrong_connect = false;
-				}
 				__log->writeTempLog(0, "DataBase", "send_answer_to_connect");
 
 			}
@@ -295,7 +294,7 @@ private:
 		if (__flag_wrong_connect)
 		{
 			__flag_wrong_connect = false;
-			stop();
+			this->stop();
 		}
 		else
 		{
@@ -366,24 +365,26 @@ private:
 		if (exit != SQLITE_OK)
 		{
 			cerr << "NO DB FILE" << endl;
-			this->stop();
-			return;
+			__makeDisconnect();
 		}
-		int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
-		sqlite3_close(__dB);
-
-		map<string, vector<string>> response;
-		map<string, vector<string>>::iterator it = __answer.begin();
-
-		for (size_t i = 0; i < fields.size(); i++)
+		else
 		{
-			vector<string> buf = __answer.at(fields[i]);
-			response[fields[i]] = buf;
-		}
+			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
+			sqlite3_close(__dB);
 
-		__buf_send.clear();
-		__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
-		cout << __buf_send << endl;
+			map<string, vector<string>> response;
+			map<string, vector<string>>::iterator it = __answer.begin();
+
+			for (size_t i = 0; i < fields.size(); i++)
+			{
+				vector<string> buf = __answer.at(fields[i]);
+				response[fields[i]] = buf;
+			}
+
+			__buf_send.clear();
+			__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
+			cout << __buf_send << endl;
+		}
 	}
 	void __makeError()
 	{
@@ -396,59 +397,62 @@ private:
 		if (exit != SQLITE_OK)
 		{
 			cerr << "NO DB FILE" << endl;
-			this->stop();
-			return;
-		}
-		__query.clear();
-		__query = "SELECT * FROM Accounts";
-		__buf_send.clear();
-		__answer.clear();
-		char* error_msg = 0;
-		cout << "query " << __query << endl;
-		int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, &error_msg);
-		if (flag != SQLITE_OK)
-		{
-			fprintf(stderr, "SQL error: %s\n", error_msg);
-			sqlite3_free(error_msg);
-			cout << "not ok exec" << endl;
-			__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
+			__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "No dataBase"));
 			__flag_wrong_connect = true;
 		}
 		else
 		{
-			try
+			__query.clear();
+			__query = "SELECT * FROM Accounts";
+			__buf_send.clear();
+			__answer.clear();
+			char* error_msg = 0;
+			cout << "query " << __query << endl;
+			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, &error_msg);
+			if (flag != SQLITE_OK)
 			{
-				vector<string> __login = __answer.at("Login");
-				vector<string> __password = __answer.at("Password");
-				int num_pus = -1;
-				for (size_t i = 0; i < __login.size(); i++)
+				fprintf(stderr, "SQL error: %s\n", error_msg);
+				sqlite3_free(error_msg);
+				cout << "not ok exec" << endl;
+				__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
+				__flag_wrong_connect = true;
+			}
+			else
+			{
+				try
 				{
-					string buf_log = "\"" + __login[i] + "\"";
-					
-					if (buf_log == (string)login)
+					vector<string> __login = __answer.at("Login");
+					vector<string> __password = __answer.at("Password");
+					int num_pus = -1;
+					for (size_t i = 0; i < __login.size(); i++)
 					{
-						num_pus = i;
-						break;
+						string buf_log = "\"" + __login[i] + "\"";
+
+						if (buf_log == (string)login)
+						{
+							num_pus = i;
+							break;
+						}
+					}
+					string buf_pas = "\"" + __password[num_pus] + "\"";
+					if (buf_pas == password)
+					{
+						__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name));
+					}
+					else
+					{
+						cout << "flag" << endl;
+						__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
+						__flag_wrong_connect = true;
 					}
 				}
-				string buf_pas = "\"" + __password[num_pus] + "\"";
-				if (buf_pas == password)
+				catch (exception& e)
 				{
-					__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name));
-				}
-				else
-				{
-					cout << "flag" << endl;
-					__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
-					__flag_wrong_connect = true;
+					cerr << e.what() << endl;
 				}
 			}
-			catch (exception& e)
-			{
-				cerr << e.what() << endl;
-			}
+			sqlite3_close(__dB);
 		}
-		sqlite3_close(__dB);
 	}
 	static int __connection(void* answer, int argc, char** argv, char** az_col_name)
 	{
