@@ -46,7 +46,7 @@ private:
 	static const int BUF_SIZE = 2048;
 	string __buf_send;
 	char* __buf_recieve;
-	boost::json::value __buf_json_recieve;
+	queue<boost::json::value> __buf_json_recieve;
 	boost::json::stream_parser __parser;
 	sqlite3* __dB;
 	string __query;
@@ -54,6 +54,8 @@ private:
 	shared_ptr<Log> __log;
 	map<string, vector<string>> __answer;
 	bool __flag_wrong_connect = false;
+	bool __flag_send = false;
+	boost::json::value __json_string;
 
 	void __reqAutentification()
 	{
@@ -98,7 +100,20 @@ private:
 		temp_send = 0;
 		__buf_send.clear();
 		__log->writeTempLog(2, "DataBase", "Receiving_a_request");
-		__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		if (__flag_wrong_connect)
+		{
+			this->stop();
+			__flag_wrong_connect = false;
+		}
+		if (__flag_send != true)
+		{
+			cerr << "not full connection" << endl;
+		}
+		else
+		{
+			__flag_send = false;
+			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
 	}
 	void __connectAnalize(const boost::system::error_code& eC, size_t bytes_recieve)
 	{
@@ -116,47 +131,64 @@ private:
 			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
-		try
+		size_t count_byte, count_byte_write = 0;
+		for (; count_byte_write < bytes_recieve;)
 		{
-			__parser.write(__buf_recieve, bytes_recieve);
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
+			try
+			{
+				count_byte = __parser.write_some(__buf_recieve + count_byte_write);
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+			}
+			if (!__parser.done())
+			{
+				fill_n(__buf_recieve, BUF_SIZE, 0);
+				cerr << "Json is not full" << endl;
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
+			try
+			{
+				__buf_json_recieve.push(__parser.release());
+				__parser.reset();
+				count_byte_write += count_byte;
+			}
+			catch (exception& e)
+			{
+				__parser.reset();
+				__buf_json_recieve = {};
+				cerr << "Json read " << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
 		}
 		fill_n(__buf_recieve, BUF_SIZE, 0);
-		if (!__parser.done())
+		while(__buf_json_recieve.size() != 0)
 		{
-			cerr << "Connect analize json not full" << endl;
-			__log->writeTempLog(2, "DataBase", "Not_full_json");
-			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			return;
-		}
-		try
-		{
-			__parser.finish();
-			__buf_json_recieve = __parser.release();
-			__parser.reset();
-
-			string login = boost::json::serialize(__buf_json_recieve.at("request").at("login"));
-			cout << "login" << login << endl;
-			string password = boost::json::serialize(__buf_json_recieve.at("request").at("password"));
-			cout << "password" << password << endl;
-			__checkConnect(login, password);
-			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__resAutentification, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			if (__flag_wrong_connect)
+			try
 			{
-				this->stop();
-				this->start();
-				__flag_wrong_connect = false;
-			}
-			__log->writeTempLog(0, "DataBase", "send_answer_to_connect");
+				__json_string = __buf_json_recieve.front();
+				__buf_json_recieve.pop();
+				string login = boost::json::serialize(__json_string.at("request").at("login"));
+				cout << "login" << login << endl;
+				string password = boost::json::serialize(__json_string.at("request").at("password"));
+				cout << "password" << password << endl;
+				__checkConnect(login, password);
+				if (__buf_json_recieve.size() == 0)
+				{
+					__flag_send = true;
+				}
+				__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__resAutentification, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				__log->writeTempLog(0, "DataBase", "send_answer_to_connect");
 
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
-			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			}
 		}
 	}
 	void __waitCommand(const boost::system::error_code& eC, size_t bytes_recieve)
@@ -176,71 +208,79 @@ private:
 			return;
 		}
 
-		try
+		size_t count_byte, count_byte_write = 0;
+		for (; count_byte_write < bytes_recieve;)
 		{
-			__parser.write(__buf_recieve, bytes_recieve);
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
+			try
+			{
+				count_byte = __parser.write_some(__buf_recieve + count_byte_write);
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+			}
+			if (!__parser.done())
+			{
+				fill_n(__buf_recieve, BUF_SIZE, 0);
+				cerr << "Json is not full" << endl;
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
+			try
+			{
+				__buf_json_recieve.push(__parser.release());
+				__parser.reset();
+				count_byte_write += count_byte;
+			}
+			catch (exception& e)
+			{
+				__parser.reset();
+				__buf_json_recieve = {};
+				cerr << "Json read " << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
 		}
 		fill_n(__buf_recieve, BUF_SIZE, 0);
-		if (!__parser.done())
+		while(__buf_json_recieve.size() != 0)
 		{
-			cerr << "waitCommand json is not full" << endl;
-			__log->writeTempLog(0, "DataBase", "Not_full_json");
-			__socket->async_receive(boost::asio::buffer(__buf_recieve, BUF_SIZE),
-				boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			return; //not full Json
+			__json_string = __buf_json_recieve.front();
+			__buf_json_recieve.pop();
+			string command = __checkCommand(__buf_recieve, bytes_recieve);
+			if (command == "ping")
+			{
+				__log->writeTempLog(0, "DataBase", "Make_ping_response");
+				__makePing();
+			}
+			else if (command == "disconnect")
+			{
+				__log->writeTempLog(0, "DataBase", "Make_disconnect_response");
+				__makeDisconnect();
+			}
+			else if (command == "db_query")
+			{
+				__log->writeTempLog(0, "DataBase", "Make_query_response");
+				__makeQuery();
+			}
+			else if (command == "error")
+			{
+				__log->writeTempLog(0, "DataBase", "Make_error_response");
+				__makeError();
+			}
+			else if (command == "connect")
+			{
+				cout << "connect" << endl;
+				__log->writeTempLog(0, "DataBase", "Start_connect");
+				__connectAnalize(eC, bytes_recieve);
+			}
+			if (__buf_json_recieve.size() == 0)
+			{
+				__flag_send = true;
+			}
+			__log->writeLog(0, "DataBase", "Send_response_command");
+			__log->writeTempLog(0, "DataBase", "Send_response_command");
+			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 		}
-		try
-		{
-			__parser.finish();
-			__buf_json_recieve = __parser.release();
-			__parser.reset();
-		}
-		catch (exception& e)
-		{
-			__log->writeLog(2, "DataBase", "Error_failed_to_read_request");
-			__log->writeTempLog(2, "DataBase", "Error_failed_to_read_request");
-			cerr << e.what() << endl;
-			__socket->async_receive(boost::asio::buffer(__buf_recieve, BUF_SIZE),
-				boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-			__error_what.clear();
-			__error_what = e.what();
-			return; //exception
-		}
-
-		string command = __checkCommand(__buf_recieve, bytes_recieve);
-		if (command == "ping")
-		{
-			__log->writeTempLog(0, "DataBase", "Make_ping_response");
-			__makePing();
-		}
-		else if (command == "disconnect")
-		{
-			__log->writeTempLog(0, "DataBase", "Make_disconnect_response");
-			__makeDisconnect();
-		}
-		else if (command == "db_query")
-		{
-			__log->writeTempLog(0, "DataBase", "Make_query_response");
-			__makeQuery();
-		}
-		else if (command == "error")
-		{
-			__log->writeTempLog(0, "DataBase", "Make_error_response");
-			__makeError();
-		}
-		else if (command == "connect")
-		{
-			cout << "connect" << endl;
-			__log->writeTempLog(0, "DataBase", "Start_connect");
-			__connectAnalize(eC, bytes_recieve);
-		}
-		__log->writeLog(0, "DataBase", "Send_response_command");
-		__log->writeTempLog(0, "DataBase", "Send_response_command");
-		__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 	}
 	void __sendCommand(const boost::system::error_code& eC, size_t bytes_send)
 	{
@@ -270,32 +310,37 @@ private:
 		if (__flag_wrong_connect)
 		{
 			__flag_wrong_connect = false;
-			stop();
+			this->stop();
 		}
 		else
-
 		{
-			__log->writeTempLog(0, "DataBase", "Recieve_request");
-			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			if(__flag_send)
+			{
+				__log->writeTempLog(0, "DataBase", "Recieve_request");
+				__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			}
+			else
+			{
+				cerr << "not full send " << endl;
+			}
 		}
 	}
 
 	string __checkCommand(char* __bufRecieve, size_t bytes_recieve)
 	{
-		cerr << __buf_json_recieve.at("target") << endl;
-		if (__buf_json_recieve.at("target") == "ping")
+		if (__json_string.at("target") == "ping")
 		{
 			return "ping";
 		}
-		else if (__buf_json_recieve.at("target") == "disconnect")
+		else if (__json_string.at("target") == "disconnect")
 		{
 			return "disconnect";
 		}
-		else if (__buf_json_recieve.at("target") == "db_query")
+		else if (__json_string.at("target") == "db_query")
 		{
 			return "db_query";
 		}
-		else if (__buf_json_recieve.at("target") == "connect")
+		else if (__json_string.at("target") == "connect")
 		{
 			return "connect";
 		}
@@ -320,7 +365,7 @@ private:
 	}
 	void __makeQuery()
 	{
-		boost::json::array jsonFields = __buf_json_recieve.at("request").at("fields").as_array();
+		boost::json::array jsonFields = __json_string.at("request").at("fields").as_array();
 		vector<string> fields;
 		for (size_t i = 0; i < jsonFields.size(); i++)
 		{
@@ -329,25 +374,33 @@ private:
 		__query.clear();
 
 		__answer.clear();
-		__query = __buf_json_recieve.at("request").at("query").as_string();
+		__query = __json_string.at("request").at("query").as_string();
 		cout << "query " << __query << endl;
 
 		int exit = sqlite3_open(DB_WAY, &__dB);
-		int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
-		sqlite3_close(__dB);
-
-		map<string, vector<string>> response;
-		map<string, vector<string>>::iterator it = __answer.begin();
-
-		for (size_t i = 0; i < fields.size(); i++)
+		if (exit != SQLITE_OK)
 		{
-			vector<string> buf = __answer.at(fields[i]);
-			response[fields[i]] = buf;
+			cerr << "NO DB FILE" << endl;
+			__makeDisconnect();
 		}
+		else
+		{
+			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
+			sqlite3_close(__dB);
 
-		__buf_send.clear();
-		__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
-		cout << __buf_send << endl;
+			map<string, vector<string>> response;
+			map<string, vector<string>>::iterator it = __answer.begin();
+
+			for (size_t i = 0; i < fields.size(); i++)
+			{
+				vector<string> buf = __answer.at(fields[i]);
+				response[fields[i]] = buf;
+			}
+
+			__buf_send.clear();
+			__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
+			cout << __buf_send << endl;
+		}
 	}
 	void __makeError()
 	{
@@ -357,56 +410,65 @@ private:
 	void __checkConnect(string login, string password)
 	{
 		int exit = sqlite3_open(DB_WAY, &__dB);
-		__query.clear();
-		__query = "SELECT * FROM Accounts";
-		__buf_send.clear();
-		__answer.clear();
-		char* error_msg = 0;
-		cout << "query " << __query << endl;
-		int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, &error_msg);
-		if (flag != SQLITE_OK)
+		if (exit != SQLITE_OK)
 		{
-			fprintf(stderr, "SQL error: %s\n", error_msg);
-			sqlite3_free(error_msg);
-			cout << "not ok exec" << endl;
-			__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
+			cerr << "NO DB FILE" << endl;
+			__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "No dataBase"));
 			__flag_wrong_connect = true;
 		}
 		else
 		{
-			try
+			__query.clear();
+			__query = "SELECT * FROM Accounts";
+			__buf_send.clear();
+			__answer.clear();
+			char* error_msg = 0;
+			cout << "query " << __query << endl;
+			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, &error_msg);
+			if (flag != SQLITE_OK)
 			{
-				vector<string> __login = __answer.at("Login");
-				vector<string> __password = __answer.at("Password");
-				int num_pus = -1;
-				for (size_t i = 0; i < __login.size(); i++)
+				fprintf(stderr, "SQL error: %s\n", error_msg);
+				sqlite3_free(error_msg);
+				cout << "not ok exec" << endl;
+				__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
+				__flag_wrong_connect = true;
+			}
+			else
+			{
+				try
 				{
-					string buf_log = "\"" + __login[i] + "\"";
-					
-					if (buf_log == (string)login)
+					vector<string> __login = __answer.at("Login");
+					vector<string> __password = __answer.at("Password");
+					int num_pus = -1;
+					for (size_t i = 0; i < __login.size(); i++)
 					{
-						num_pus = i;
-						break;
+						string buf_log = "\"" + __login[i] + "\"";
+
+						if (buf_log == (string)login)
+						{
+							num_pus = i;
+							break;
+						}
+					}
+					string buf_pas = "\"" + __password[num_pus] + "\"";
+					if (buf_pas == password)
+					{
+						__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name));
+					}
+					else
+					{
+						cout << "flag" << endl;
+						__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
+						__flag_wrong_connect = true;
 					}
 				}
-				string buf_pas = "\"" + __password[num_pus] + "\"";
-				if (buf_pas == password)
+				catch (exception& e)
 				{
-					__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name));
-				}
-				else
-				{
-					cout << "flag" << endl;
-					__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "Password mismatch"));
-					__flag_wrong_connect = true;
+					cerr << e.what() << endl;
 				}
 			}
-			catch (exception& e)
-			{
-				cerr << e.what() << endl;
-			}
+			sqlite3_close(__dB);
 		}
-		sqlite3_close(__dB);
 	}
 	static int __connection(void* answer, int argc, char** argv, char** az_col_name)
 	{
@@ -451,11 +513,18 @@ public:
 		__buf_json_recieve = {};
 		__parser.reset();
 
+	}
+	void start()
+	{
+		cerr << 12 << endl;
+		__log->writeLog(0, "DataBase", "Connect_with_DataBase");
+		__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
 		int checkDb = sqlite3_open(DB_WAY, &__dB);
 		if (checkDb)
 		{
 			cerr << "can`t open dataBase" << endl;
 			sqlite3_close(__dB);
+			this->stop();
 			return;
 		}
 		else
@@ -463,12 +532,6 @@ public:
 			cerr << "Db open" << endl;
 			sqlite3_close(__dB);
 		}
-	}
-	void start()
-	{
-		cerr << 12 << endl;
-		__log->writeLog(0, "DataBase", "Connect_with_DataBase");
-		__log->writeTempLog(0, "DataBase", "Connect_with_DataBase");
 		//__socket->async_connect(*__endPoint, boost::bind(&DataBase::__reqAutentification, shared_from_this(), boost::placeholders::_1));
 		__reqAutentification();
 	}
@@ -491,37 +554,13 @@ public:
 class Server : public enable_shared_from_this<Server>
 {
 public:
-	Server(shared_ptr<net::io_context> io_context, string name_config_file)
+	Server(shared_ptr<net::io_context> io_context, string name_config_file, shared_ptr<Log> log_server, map<string, string> config_info)
 	{
 		__ioc = io_context;
 		__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
-		__log_server = make_shared<Log>("Log/", "./", "DataBase");
-		__config = make_shared<Config>(__log_server, "./", "", name_config_file);
-		__config->readConfig();
-		__config_info = __config->getConfigInfo();
-		if (__config_info.size() == 0)
-		{
-			__log_server->writeLog(1, "DataBase", "Config_File_not_open");
-			return;
-		}
-		else if (__config_info.size() < CONFIG_NUM_FIELDS)
-		{
-			__log_server->writeLog(1, "DataBase", "Config_File_not_full");
-		}
-		try
-		{
-			for (size_t i = 0, length = __config_info.size(); i < length; i++)
-			{
-				__config_info.at(CONFIG_FIELDS.at(i));
-			}
-		}
-		catch (exception& e)
-		{
-			__log_server->writeLog(1, "DataBase", e.what());
-			//return;
-		}
-
-		string port = __config_info.at("Port");
+		__log_server = log_server;
+		__config_info = config_info;
+		string port = __config_info.at("port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
 
@@ -543,10 +582,7 @@ public:
 	}
 private:
 	shared_ptr<Log> __log_server;
-	shared_ptr<Config> __config;
 	map<string, string> __config_info;
-	static const int CONFIG_NUM_FIELDS = 2;
-	vector<string> CONFIG_FIELDS = { "Port", "Count_threads" };
 	shared_ptr<tcp::acceptor> __acceptor;
 	shared_ptr<net::io_context> __ioc;
 	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;

@@ -58,6 +58,20 @@ public:
 		__timer = make_shared<net::deadline_timer>(__ioc);
 		__log = lg;
 		__flag_disconnect = false;
+
+	}
+	~Worker()
+	{
+		this->stop();
+		delete[] __buf_recive;
+	}
+	void start()
+	{
+		cout << 2 << endl;
+		__log->writeLog(0, __name, "start_server");
+		__log->writeTempLog(0, __name, "start_server");
+		__timer->expires_from_now(boost::posix_time::hours(24));
+		__timer->async_wait(boost::bind(&Worker::__resetTimer, shared_from_this()));
 		try
 		{
 			__ip_ms = __config_info.at("Main_server_ip");
@@ -79,20 +93,6 @@ public:
 			this->stop();
 			return;
 		}
-
-	}
-	~Worker()
-	{
-		this->stop();
-		delete[] __buf_recive;
-	}
-	void start()
-	{
-		cout << 2 << endl;
-		__log->writeLog(0, __name, "start_server");
-		__log->writeTempLog(0, __name, "start_server");
-		__timer->expires_from_now(boost::posix_time::hours(24));
-		__timer->async_wait(boost::bind(&Worker::__resetTimer, shared_from_this()));
 		__connectToBd();
 		__connectToMS();
 	}
@@ -137,14 +137,16 @@ private:
 	static const int BUF_RECIVE_SIZE = 2048;
 	string __buf_send;
 	char* __buf_recive;
-	boost::json::value __buf_json_recive;
+	queue<boost::json::value> __buf_json_recive;
 	boost::json::value __buf_json_response;
 	boost::json::stream_parser __parser;
 	queue<string> __sender;
 	shared_ptr<Log> __log;
 	shared_ptr<tcp::endpoint> __end_point;
 	bool __flag_disconnect = false;
+	bool __flag_end_send = false;
 	string __response_command;
+	boost::json::value __json_string;
 
 	/*vector<u8string> __key_roots = { u8"перв", u8"втор", u8"трет", u8"чет", u8"пят", u8"шест", u8"седьм", u8"восьм", u8"девят",u8"дцат", u8"сорок", u8"десят",  u8"девян", u8"сот",u8"сто",u8"минус", u8"нулев"};
 	map<u8string, int> __num_roots= {
@@ -227,90 +229,124 @@ private:
 			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
-		try
+
+		size_t count_byte, count_byte_write = 0;
+		for (; count_byte_write < bytes_recive;)
 		{
-			__parser.write(__buf_recive, bytes_recive);
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
+			try
+			{
+				count_byte = __parser.write_some(__buf_recive + count_byte_write);
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+			}
+			if (!__parser.done())
+			{
+				fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
+				cerr << "Json is not full" << endl;
+				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
+			try
+			{
+				__buf_json_recive.push(__parser.release());
+				__parser.reset();
+				count_byte_write += count_byte;
+			}
+			catch (exception& e)
+			{
+				__parser.reset();
+				__buf_json_recive = {};
+				cerr << "Json read " << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
 		}
 		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
-		if (!__parser.done())
-		{
-			cerr << "Connect analize json not full" << endl;
-			__log->writeTempLog(2, "DataBase", "Not_full_json");
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-		}
-		try
-		{
-			__parser.finish();
-			__buf_json_recive = __parser.release();
-			__parser.reset();
-
-			cerr << __buf_json_recive << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-		}
+		__buf_json_recive = {};
+		__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 	}
 
 	void __sendResponse(const boost::system::error_code& eC, size_t bytes_recive)
 	{
 		if (eC)
 		{
-			cerr <<"SendCommand " << eC.message() << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			cerr << "reciveCommand " << eC.message() << endl;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
-		try
+
+		size_t count_byte, count_byte_write = 0;
+		for (; count_byte_write < bytes_recive;)
 		{
-			__parser.write(__buf_recive, bytes_recive);
-		}
-		catch (exception& e)
-		{
-			cerr << e.what() << endl;
+			try
+			{
+				count_byte = __parser.write_some(__buf_recive + count_byte_write);
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+			}
+			if (!__parser.done())
+			{
+				fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
+				cerr << "Json is not full" << endl;
+				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
+			try
+			{
+				__buf_json_recive.push(__parser.release());
+				__parser.reset();
+				count_byte_write += count_byte;
+			}
+			catch (exception& e)
+			{
+				__parser.reset();
+				__buf_json_recive = {};
+				cerr << "Json read " << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+				return;
+			}
 		}
 		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
-		if (!__parser.done())
-		{
-			cerr << "Connect analize json not full" << endl;
-			__log->writeTempLog(2, "DataBase", "Not_full_json");
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-		}
-		try
-		{
-			__parser.finish();
-			__buf_json_recive = __parser.release();
-			__parser.reset();
 
-			//cerr << __buf_json_recive << endl;
-			boost::json::value target = __buf_json_recive.at("target");
-			if (target == "ping")
-			{
-				__buf_send = boost::json::serialize(json_formatter::worker::response::ping(__name));
-			}
-			else if (target == "disconnect")
-			{
-				__buf_send = boost::json::serialize(json_formatter::worker::response::disconnect(__name));
-				__flag_disconnect = true;
-			}
-			else if (target == "marussia_station_request")
-			{
-				__analizeRequest();
-			}
-			cerr << __flag_disconnect << endl;
-			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
-
-		}
-		catch (exception& e)
+		while(__buf_json_recive.size() != 0)
 		{
-			cerr << e.what() << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			try
+			{
+				__json_string = __buf_json_recive.front();
+				__buf_json_recive.pop();
+
+				//cerr << json_string << endl;
+				boost::json::value target = __json_string.at("target");
+				if (target == "ping")
+				{
+					__buf_send = boost::json::serialize(json_formatter::worker::response::ping(__name));
+				}
+				else if (target == "disconnect")
+				{
+					__buf_send = boost::json::serialize(json_formatter::worker::response::disconnect(__name));
+					__flag_disconnect = true;
+				}
+				else if (target == "marussia_station_request")
+				{
+					__analizeRequest();
+				}
+				cerr << __flag_disconnect << endl;
+				if (__buf_json_recive.size() == 0)
+				{
+					__flag_end_send = true;
+				}
+				__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&Worker::__reciveAnswer, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+
+			}
+			catch (exception& e)
+			{
+				cerr << e.what() << endl;
+				__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			}
 		}
 	}
 
@@ -337,9 +373,14 @@ private:
 			__flag_disconnect = false;
 			this->stop();
 		}
+		else if (__flag_end_send)
+		{
+			__flag_end_send = false;
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
 		else
 		{
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			cerr << "no one send " << endl;
 		}
 	}
 
@@ -349,9 +390,9 @@ private:
 		queue<string> tables;
 		tables.push("MarussiaStation"); tables.push("House"); tables.push("StaticPhrases");
 		queue<vector<string>> fields;
-		vector<string> fields_marussia = { "ApplicationId", "ComplexId", "HouseNum", "LiftBlockId"};
-		vector<string> fields_house = { "TopFloor", "BottomFloor", "NullFloor", "HouseNum", "ComplexId" };
-		vector<string> fields_phrases = { "ComplexId", "HouseNumber", "KeyWords", "Response" };
+		vector<string> fields_marussia = { "ApplicationId", "HouseComplexId", "HouseNum", "LiftBlockId"};
+		vector<string> fields_house = { "TopFloor", "BottomFloor", "NullFloor", "HouseNumber", "HousingComplexId" };
+		vector<string> fields_phrases = { "HouseComplexId", "HouseNum", "KeyWords", "Response" };
 		fields.push(fields_marussia); fields.push(fields_house); fields.push(fields_phrases);
 
 		queue<string> conditions;
@@ -374,14 +415,14 @@ private:
 	{
 		__log->writeTempLog(0, __name, "__analize_response");
 		///___marussia station House number and complex id___///
-		string app_id = boost::json::serialize(__buf_json_recive.at("request").at("station_id"));
+		string app_id = boost::json::serialize(__json_string.at("request").at("station_id"));
 
 
 		cerr << "app_id" << app_id << endl;
 		map<string, vector<string>> one_table = __db_info.at("MarussiaStation");
 		vector<string> buf_vec = __db_info.at("MarussiaStation").at("ApplicationId");
 		vector<string> house_vec = __db_info.at("MarussiaStation").at("HouseNum");
-		vector<string> comp_vec = __db_info.at("MarussiaStation").at("ComplexId");
+		vector<string> comp_vec = __db_info.at("MarussiaStation").at("HouseComplexId");
 		vector<string> lift_vec = __db_info.at("MarussiaStation").at("LiftBlockId");
 
 		string num_house = "-1";
@@ -411,7 +452,7 @@ private:
 		//cerr << "lift_block " << lift_block << endl;
 
 		///___search for mqtt_____/////
-		boost::json::array array_tokens = __buf_json_recive.at("request").at("body").at("request").at("nlu").at("tokens").as_array();
+		boost::json::array array_tokens = __json_string.at("request").at("body").at("request").at("nlu").at("tokens").as_array();
 		vector<string> search_mqtt;
 		bool flag_mqtt = false;
 		//boost::locale::generator gen;
@@ -439,8 +480,8 @@ private:
 			one_table.clear();
 			one_table = __db_info.at("House");
 			buf_vec.clear(); house_vec.clear(); comp_vec.clear();
-			house_vec = __db_info.at("House").at("HouseNum");
-			comp_vec = __db_info.at("House").at("ComplexId");
+			house_vec = __db_info.at("House").at("HouseNumber");
+			comp_vec = __db_info.at("House").at("HousingComplexId");
 			vector<string> top_floor = __db_info.at("House").at("TopFloor");
 			vector<string> bot_floor = __db_info.at("House").at("BottomFloor");
 			vector<string> null_floor = __db_info.at("House").at("NullFloor");
@@ -513,15 +554,15 @@ private:
 		{
 			///_____static phrases response static phrase___///
 
-			string buf_command = boost::json::serialize(__buf_json_recive.at("request").at("body").at("request").at("command"));
+			string buf_command = boost::json::serialize(__json_string.at("request").at("body").at("request").at("command"));
 			string command;
 			remove_copy(buf_command.begin(), buf_command.end(), back_inserter(command), '"');
 			one_table.clear();
 			one_table = __db_info.at("StaticPhrases");
 			buf_vec.clear(); house_vec.clear(); comp_vec.clear();
 			buf_vec = __db_info.at("StaticPhrases").at("KeyWords");
-			house_vec = __db_info.at("StaticPhrases").at("HouseNumber");
-			comp_vec = __db_info.at("StaticPhrases").at("ComplexId");
+			house_vec = __db_info.at("StaticPhrases").at("HouseNum");
+			comp_vec = __db_info.at("StaticPhrases").at("HouseComplexId");
 			vector<string> resp = __db_info.at("StaticPhrases").at("Response");
 
 			for (size_t i = 0; i < buf_vec.size(); i++)
