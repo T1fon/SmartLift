@@ -107,7 +107,8 @@ private:
 		if (error_code)
 		{
 			cerr << error_code	.what() << endl;
-			Sleep(2000);
+			//Sleep(2000);
+			sleep(2000);
 			this->stop();
 			this->start();
 			return;

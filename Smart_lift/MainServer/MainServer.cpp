@@ -27,7 +27,8 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 		if (__port_marusia_station < 1 || __port_mqtt < 1 || __port_worker_mqtt < 1 ||
 			__port_worker_mqtt_info < 1 || __port_worker_marusia < 1 || __count_threads < 1) 
 		{
-			throw exception("Port <= 0");
+			//throw exception("Port <= 0");
+			throw invalid_argument("Port <= 0");
 		}
 	}
 	catch (exception& e) {

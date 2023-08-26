@@ -67,6 +67,10 @@ void Config::readConfig()
 			size_t border = boof.find(":");
 			key.append(boof, 0, border);
 			boof.erase(0, border + 1);
+			border = boof.find("\r");
+			if(border != string::npos){
+				boof.erase(border,1);
+			}
 			config.insert(pair<string, string>(key, boof));
 		}
 		__log_config->writeLog(0, "config", "Write Config");

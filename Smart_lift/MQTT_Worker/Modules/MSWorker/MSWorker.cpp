@@ -17,6 +17,7 @@ MSWorker::~MSWorker() {
 	delete[] __buf_recive;
 }
 void MSWorker::start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> lu_id_descriptor) {
+	cout << "Start" << endl;
 	__lu_id_descriptor = lu_id_descriptor;
 	__socket->async_connect(*__end_point, boost::bind(&MSWorker::__requestAuthentication, shared_from_this(), _1));
 }
@@ -28,8 +29,13 @@ void MSWorker::stop() {
 void MSWorker::__requestAuthentication(const boost::system::error_code& error){
 	if (error) {
 		cerr << error.what() << endl;
-		//чтобы не спамить временное решение
-		Sleep(2000);
+		//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+		
+		#ifndef UNIX
+			sleep(2);
+		#else
+			Sleep(2000);
+		#endif
 		this->stop();
 		this->start(__lu_id_descriptor);
 		return;
@@ -50,7 +56,7 @@ void MSWorker::__connectAnalize() {
 		else {
 			cout << "Connect Fail!!!!!!" << endl;
 			cout << __buf_json_recive.at("response").at("message").as_string() << endl;
-			//Завершаем работу воркера
+			//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			this->stop();
 		}
 	}
@@ -108,6 +114,7 @@ MSWorker::__CHECK_STATUS MSWorker::__sendCheck(const size_t& count_send_byte, si
 void MSWorker::__sendCommand(const boost::system::error_code& error, std::size_t count_send_byte) {
 	if (error) {
 		cerr << "sendCommand " << error.what() << endl;
+		
 		this->stop();
 		this->start(__lu_id_descriptor);
 		return;
@@ -126,6 +133,7 @@ void MSWorker::__sendCommand(const boost::system::error_code& error, std::size_t
 void MSWorker::__reciveCommand(const boost::system::error_code& error, std::size_t count_recive_byte) {
 	if (error) {
 		cerr << "reciveCommand " << error.what() << endl;
+		
 		this->stop();
 		this->start(__lu_id_descriptor);
 		return;

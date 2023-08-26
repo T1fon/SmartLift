@@ -137,14 +137,15 @@ void Session::_autorization() {
             }
         }
         if (!successful_find) {
-            throw exception("id not Found");
+            throw invalid_argument("id not Found");
+            //throw exception("id not Found");
         }
         /*------------------------------------*/
         //� ������ ������
         _is_live = true;
         _buf_send = serialize(json_formatter::worker::response::connect(_sender));
 
-        _ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME));
+        _ping_timer.expires_from_now(boost::posix_time::seconds(ISession::_PING_TIME));
         _ping_timer.async_wait(boost::bind(&Session::_ping, shared_from_this(), _1));
     }
     catch (exception& e) {

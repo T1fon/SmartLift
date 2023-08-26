@@ -1,19 +1,22 @@
-# CMakeList.txt: проект CMake для Smart_lift; включите исходный код и определения,
-# укажите здесь логику для конкретного проекта.
+# CMakeList.txt: пїЅпїЅпїЅпїЅпїЅпїЅ CMake пїЅпїЅпїЅ Smart_lift; пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 #
 
-# Добавьте источник в исполняемый файл этого проекта.
+# пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 
 if(UNIX)
-	set(BOOST_PATH "")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
+	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
+	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 else() 
 	set(BOOST_ROOT "../../../boost_1_82_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
-
-	set(MODULES "Modules")
-	set(GLOBAL_MODULES "../GlobalModules")
 endif()
+
+set(MODULES "Modules")
+set(GLOBAL_MODULES "../GlobalModules")
+
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
 set(Boost_USE_DEBUG_LIBS         ON)  # ignore debug libs and
@@ -27,11 +30,11 @@ set(MOD_JSON "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODUL
 set(MOD_Server "${MODULES}/Server/DataBaseServer.cpp" "${MODULES}/Server/DataBaseServer.hpp")
 set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
 set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
-set(MOD_Libraries "${MODULES}/Libraries/shell.c" "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
+set(MOD_Libraries "${MODULES}/Libraries/sqlite3.c" "${MODULES}/Libraries/sqlite3.h")
 set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_Server} ${MOD_Libraries})
 add_executable (ServerDB "main.cpp" "DataBase.cpp" "DataBase.hpp" ${SOURCE_MODULES})
 
-find_package(Boost 1.82.0 REQUIRED)
+find_package(Boost REQUIRED)
 
 if(Boost_FOUND)
 
@@ -39,16 +42,16 @@ if(Boost_FOUND)
 
 	target_include_directories(ServerDB PUBLIC ${Boost_INCLUDE_DIRS})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic REQUIRED)
-	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
+	find_package(Boost COMPONENTS thread chrono atomic REQUIRED)
+	find_package(Boost COMPONENTS json REQUIRED)
 
 
 	target_link_libraries(ServerDB PUBLIC Boost::thread)
 	target_link_libraries(ServerDB PUBLIC Boost::json)
 
 else()
-	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
-	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")
+	message(CONFIG " пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Boost пїЅпїЅпїЅпїЅпїЅпїЅ 1.82.0")
+	message(CONFIG " пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OpenSSL 3.1.1")
 endif()
 
-# TODO: Добавьте тесты и целевые объекты, если это необходимо.
+# TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.

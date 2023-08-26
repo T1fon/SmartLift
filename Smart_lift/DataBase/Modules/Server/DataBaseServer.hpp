@@ -78,7 +78,11 @@ private:
 			__log->writeLog(2, "DataBase", "Error_failed_to_read_response");
 			__log->writeTempLog(2, "DataBase", "Error_failed_to_read_response");
 			cerr << eC.message() << endl;
-			Sleep(2000);
+			#ifndef UNIX
+				sleep(2);
+			#else
+				Sleep(2000);
+			#endif
 			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__resAutentification, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 			cerr << "nehehe" << endl;
@@ -102,7 +106,11 @@ private:
 		if (eC)
 		{
 			cerr << eC.message() << endl;
-			Sleep(1000);
+			#ifndef UNIX
+				sleep(1);
+			#else
+				Sleep(1000);
+			#endif
 			__log->writeLog(2, "DataBase", "Error_failed_to_read_request");
 			__log->writeTempLog(2, "DataBase", "Error_failed_to_read_request");
 			__socket->async_receive(net::buffer(__buf_recieve, BUF_SIZE), boost::bind(&DataBase::__connectAnalize, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
@@ -158,7 +166,11 @@ private:
 			__log->writeLog(2, "DataBase", "Error_failed_to_read_request");
 			__log->writeTempLog(2, "DataBase", "Error_failed_to_read_request");
 			cerr << eC.message() << endl;
-			Sleep(1000);
+			#ifndef UNIX
+				sleep(1);
+			#else
+				Sleep(1000);
+			#endif
 			__socket->async_receive(boost::asio::buffer(__buf_recieve, BUF_SIZE),
 				boost::bind(&DataBase::__waitCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
@@ -237,7 +249,11 @@ private:
 			__log->writeLog(2, "DataBase", "Error_send_response_command");
 			__log->writeTempLog(2, "DataBase", "Error_send_response_command");
 			cerr << eC.message() << endl;
-			Sleep(2000);
+			#ifndef UNIX
+				sleep(1);
+			#else
+				Sleep(1000);
+			#endif
 			__socket->async_send(net::buffer(__buf_send, __buf_send.size()), boost::bind(&DataBase::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
@@ -502,8 +518,9 @@ public:
 		catch (exception& e)
 		{
 			__log_server->writeLog(1, "DataBase", e.what());
-			return;
+			//return;
 		}
+
 		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
@@ -528,8 +545,8 @@ private:
 	shared_ptr<Log> __log_server;
 	shared_ptr<Config> __config;
 	map<string, string> __config_info;
-	static const int CONFIG_NUM_FIELDS = 1;
-	vector<string> CONFIG_FIELDS = { "Port" };
+	static const int CONFIG_NUM_FIELDS = 2;
+	vector<string> CONFIG_FIELDS = { "Port", "Count_threads" };
 	shared_ptr<tcp::acceptor> __acceptor;
 	shared_ptr<net::io_context> __ioc;
 	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;

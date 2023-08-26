@@ -6,6 +6,7 @@
 #include <locale.h>
 #include <ctime>
 #include <map>
+#include <memory>
 #include <fstream>
 
 using namespace std;

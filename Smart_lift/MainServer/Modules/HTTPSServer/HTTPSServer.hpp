@@ -8,7 +8,8 @@
 #include <boost/asio/strand.hpp>
 #include <boost/config.hpp>
 #include <boost/json.hpp>
-#include <boost/locale.hpp>
+//#include <boost/locale.hpp>
+#include <exception>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>

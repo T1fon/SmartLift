@@ -6,6 +6,7 @@
 #include <queue>
 #include <boost/asio.hpp>
 #include <boost/beast/ssl.hpp>
+#include <exception>
 #include "Modules/WorkerServer/WorkerServer.hpp"
 #include "../GlobalModules/Log/Log.hpp"
 #include "../GlobalModules/Config/Config.hpp"

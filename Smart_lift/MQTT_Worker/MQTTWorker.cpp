@@ -33,7 +33,7 @@ int MQTTWorker::init() {
         __db_login = __config_data.at("DB_login");
         __db_password = __config_data.at("DB_password");
         if (__main_server_port < 1 || __main_server_info_port < 1 || __db_port < 1 || __count_threads < 1) {
-            throw exception("Port or count thread < 1");
+            throw invalid_argument("Port or count thread < 1");
         }
     }
     catch (exception& e) {
@@ -70,7 +70,7 @@ int MQTTWorker::init() {
     return SUCCESSFUL;
 }
 void MQTTWorker::start() {
-    /*заполнение __lu_id*/
+    /*пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ __lu_id*/
     //__mqtt_broker->start(make_shared<shared_ptr<map<string, string>>>(__sp_db_map_login_password));
     //__ms_worker->start(make_shared<shared_ptr<map<string, string>>>(__sp_db_map_lb_descriptor));
 
@@ -135,7 +135,7 @@ void MQTTWorker::__updateData(map<string, map<string, vector<string>>>& data) {
     shared_ptr<map<string, string>> temp_sp_db_map_lb_descriptor = make_shared<map<string,string>>();
     shared_ptr<map<string, string>> temp_sp_db_map_login_password = make_shared<map<string, string>>();
     if (temp_sp_db_lift_blocks->size() == 0) {
-        throw exception("Worker don't have LB");
+        throw invalid_argument("Worker don't have LB");
     }
 
     for (auto i = __sp_db_lift_blocks->at("LiftId").begin(),

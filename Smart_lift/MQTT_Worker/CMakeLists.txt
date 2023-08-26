@@ -1,18 +1,21 @@
+set(MODULES "Modules")
+set(GLOBAL_MODULES "../GlobalModules")
+
 if(UNIX)
-	set(BOOST_PATH "")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
+	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
+	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
+
+	set(MQTT_PATH "/home/vato/Vato/SmartLift/mqtt/mqtt_cpp/include")
 else() 
 	set(BOOST_ROOT "../../../boost_1_82_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
 
-	set(OPENSSL_ROOT_DIR "C:/Vato/My_Programs/LKDS/OpenSSLBuild")
-	set(OPENSSL_INCLUDE_DIR "${OPENSSL_ROOT_DIR}/include")
-
 	set(MQTT_PATH "C:/Vato/My_Programs/LKDS/MQTT_cpp/source/include")
-	set(MODULES "Modules")
-	set(GLOBAL_MODULES "../GlobalModules")
 	set(CMAKE_CXX_FLAGS "/bigobj /EHsc")
 endif()
+
 
 
 set(Boost_NO_SYSTEM_PATHS		 ON)
@@ -37,10 +40,9 @@ set(SOURCE_MODULES ${MOD_MQTT_Broker} ${MOD_MSWorker} ${MOD_JSON_Formatter} ${MO
 
 add_executable (MQTT_Worker "MQTTWorker.cpp" "MQTTWorker.hpp" ${SOURCE_MODULES})
 
-find_package(Boost 1.82.0 REQUIRED)
-find_package(OpenSSL 3.1.1 REQUIRED)
+find_package(Boost REQUIRED)
 
-if(Boost_FOUND AND OpenSSL_FOUND)
+if(Boost_FOUND)
 	message(CONFIG " OPENSSL_INCLUDE_DIR ${OPENSSL_INCLUDE_DIR}")
 	message(CONFIG " OPENSSL_LIBRARIES ${OPENSSL_LIBRARIES}")
 	message(CONFIG " OPENSSL_ROOT_DIR ${OPENSSL_ROOT_DIR}")
@@ -49,28 +51,20 @@ if(Boost_FOUND AND OpenSSL_FOUND)
 	set_property(TARGET MQTT_Worker PROPERTY CXX_STANDARD 20)
 
 	target_include_directories(MQTT_Worker PUBLIC ${Boost_INCLUDE_DIRS})
-	target_include_directories(MQTT_Worker PUBLIC ${OPENSSL_INCLUDE_DIR})
 	target_include_directories(MQTT_Worker PUBLIC ${MQTT_PATH})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic log REQUIRED)
-	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
-	find_package(OPENSSL COMPONENTS crypto ssl REQUIRED)
+	find_package(Boost COMPONENTS thread chrono atomic log REQUIRED)
+	find_package(Boost COMPONENTS json REQUIRED)
 
 	target_link_libraries(MQTT_Worker PUBLIC Boost::thread)
 	target_link_libraries(MQTT_Worker PUBLIC Boost::json)
 	target_link_libraries(MQTT_Worker PUBLIC Boost::log)
 	
-	target_link_libraries(MQTT_Worker PUBLIC OpenSSL::SSL)
-	target_link_libraries(MQTT_Worker PUBLIC OpenSSL::Crypto)
-	
 	add_library(mqtt_cpp_iface INTERFACE)
 
-	
-	#add_directory(${GLOBAL_MODULES})
-	#add_subdirectory(${MODULES})
 	target_include_directories(MQTT_Worker PUBLIC ${GLOBAL_MODULES})
 	target_include_directories(MQTT_Worker PUBLIC ${MODULES})
 else()
-	message(CONFIG " Не установлена библиотека Boost версии 1.82.0")
-	message(CONFIG " Или не установлена библиотека OpenSSL 3.1.1")
+	message(CONFIG " пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Boost пїЅпїЅпїЅпїЅпїЅпїЅ 1.82.0")
+	message(CONFIG " пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OpenSSL 3.1.1")
 endif()

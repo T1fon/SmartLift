@@ -1,14 +1,16 @@
 
 if(UNIX)
-	set(BOOST_PATH "")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
+	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
+	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 else() 
 	set(BOOST_ROOT "../../../boost_1_82_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
-
-	set(MODULES "Modules")
-	set(GLOBAL_MODULES "../GlobalModules")
 endif()
+
+set(MODULES "Modules")
+set(GLOBAL_MODULES "../GlobalModules")
 set(Boost_NO_SYSTEM_PATHS		 ON)
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
 set(Boost_USE_DEBUG_LIBS         ON)  # ignore debug libs and
@@ -31,7 +33,7 @@ set(SOURCE_MODULES ${MOD_JSON} ${MOD_CONFIG} ${MOD_LOG} ${MOD_SERVER} ${MOD_CLIE
 
 add_executable (Worker "main.cpp" "WorkerServer.hpp" ${SOURCE_MODULES})
 
-find_package(Boost 1.82.0 REQUIRED)
+find_package(Boost REQUIRED)
 
 if(Boost_FOUND)
 	message(CONFIG " OPENSSL_INCLUDE_DIR ${OPENSSL_INCLUDE_DIR}")
@@ -44,8 +46,8 @@ if(Boost_FOUND)
 
 	target_include_directories(Worker PUBLIC ${Boost_INCLUDE_DIRS})
 	
-	find_package(Boost 1.82.0 COMPONENTS thread chrono atomic locale REQUIRED)
-	find_package(Boost 1.82.0 COMPONENTS json REQUIRED)
+	find_package(Boost COMPONENTS thread chrono atomic locale REQUIRED)
+	find_package(Boost COMPONENTS json REQUIRED)
 
 	target_link_libraries(Worker PUBLIC Boost::thread)
 	target_link_libraries(Worker PUBLIC Boost::locale)

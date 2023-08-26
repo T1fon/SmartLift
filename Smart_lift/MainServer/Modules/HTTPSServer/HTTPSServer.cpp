@@ -181,7 +181,8 @@ void Session::__analizeRequest()
         else { search_successful = true; }
         
         if (!search_successful) {
-            throw exception(string("application id not found: " + application_id).c_str());
+            //throw exception(string("application id not found: " + application_id).c_str());
+            throw invalid_argument(string("application id not found: " + application_id).c_str());
         }
         /*-----------------------------------------*/
         search_successful = false;
@@ -197,7 +198,8 @@ void Session::__analizeRequest()
                 search_successful = true;
             }
             else {
-                throw exception("");
+                throw invalid_argument("");
+                //throw exception("");
             }
         }
         catch (exception& e) {
@@ -245,7 +247,8 @@ void Session::__analizeRequest()
                 search_successful = true;
             }
             else {
-                throw exception("");
+                throw invalid_argument("");
+                //throw exception("");
             }
         }
         catch (exception& e) {
@@ -292,7 +295,7 @@ http::message_generator Session::__badRequest(beast::string_view why) {
 void Session::__callbackWorkerMarussia(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
-    boost::locale::generator gen;
+    //boost::locale::generator gen;
     __request_mqtt = {};
     cout << "__callbackWorkerMarussia : " << data << endl;
 
@@ -310,7 +313,8 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
         }
         else if (target == "move_lift") {
             if (__sessions_mqtt->size() == 0) {
-                throw exception("session mqtt size = 0");
+                throw invalid_argument("session mqtt size = 0");
+                //throw exception("session mqtt size = 0");
             }
             __request_mqtt.station_id = data.at("response").at("station_id").as_string();
             __request_mqtt.floor = stoi(data.at("response").at("mqtt_command").at("value").as_string().c_str());
@@ -349,7 +353,7 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
 void Session::__callbackWorkerMQTT(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
-    boost::locale::generator gen;
+    //boost::locale::generator gen;
     u8string text;
     string result_text;
     cout << "__callbackWorkerMQTT : " << data << endl;
@@ -396,8 +400,9 @@ void Session::__callbackWorkerMQTT(boost::json::value data) {
     if (target == "error") {
         /*������ ��������� ������� ������ �������� ����������*/
         /*����������� ��������� � ��� ��� ������ �������� ����������*/
-        text = u8"Извините пожалуйста сервис временно недоступен";
-        result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+        //text = u8"Извините пожалуйста сервис временно недоступен";
+        //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
+        result_text = "Извините пожалуйста сервис временно недоступен";
         response_data =
         {
             {"text", result_text},
@@ -447,6 +452,7 @@ Listener::Listener( net::io_context& io_ctx,
                                                                          __io_ctx(io_ctx),
                                                                          __ssl_ctx(ssl_ctx)
 {
+    
     __acceptor = make_shared<tcp::acceptor>(__io_ctx, tcp::endpoint(tcp::v4(), port));
 
     __sessions_mqtt = sessions_mqtt;

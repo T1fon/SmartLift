@@ -26,7 +26,7 @@ namespace worker_server {
         typedef std::function<void(boost::system::error_code, std::size_t)> _handler_t;
 
         static const int _BUF_RECIVE_SIZE = 2048;
-        static const int _PING_TIME = 10;
+        const int _PING_TIME = 10;
         string _id;
         string _sender;
         string _buf_send;
