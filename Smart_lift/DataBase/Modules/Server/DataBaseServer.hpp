@@ -369,21 +369,33 @@ private:
 		}
 		else
 		{
-			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, NULL);
-			sqlite3_close(__dB);
-
-			map<string, vector<string>> response;
-			map<string, vector<string>>::iterator it = __answer.begin();
-
-			for (size_t i = 0; i < fields.size(); i++)
+			char* error_msg = 0;
+			int flag = sqlite3_exec(__dB, __query.c_str(), __connection, (void*)&__answer, &error_msg);
+			if (flag != SQLITE_OK)
 			{
-				vector<string> buf = __answer.at(fields[i]);
-				response[fields[i]] = buf;
+				fprintf(stderr, "SQL error: %s\n", error_msg);
+				sqlite3_free(error_msg);
+				cout << "not exist query" << endl;
+				__makeDisconnect();
+				sqlite3_close(__dB);
 			}
+			else
+			{
+				sqlite3_close(__dB);
 
-			__buf_send.clear();
-			__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
-			cout << __buf_send << endl;
+				map<string, vector<string>> response;
+				map<string, vector<string>>::iterator it = __answer.begin();
+
+				for (size_t i = 0; i < fields.size(); i++)
+				{
+					vector<string> buf = __answer.at(fields[i]);
+					response[fields[i]] = buf;
+				}
+
+				__buf_send.clear();
+				__buf_send = boost::json::serialize(json_formatter::database::response::query(__name, json_formatter::database::QUERY_METHOD::SELECT, response));
+				cout << __buf_send << endl;
+			}
 		}
 	}
 	void __makeError()
@@ -416,6 +428,7 @@ private:
 				cout << "not ok exec" << endl;
 				__buf_send = boost::json::serialize(json_formatter::database::response::connect(__name, json_formatter::ERROR_CODE::CONNECT, "User not found"));
 				__flag_wrong_connect = true;
+				sqlite3_close(__dB);
 			}
 			else
 			{
@@ -544,7 +557,7 @@ public:
 		__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
 		__log_server = log_server;
 		__config_info = config_info;
-		string port = __config_info.at("port");
+		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
 
