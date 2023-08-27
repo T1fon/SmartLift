@@ -35,6 +35,7 @@ void Session::__onRun() {
                               beast::bind_front_handler( &Session::__onHandshake, this->shared_from_this() ));
 }
 void Session::__onHandshake(beast::error_code ec) {
+    /*тут нужно добавить перечтение ssl сертификата*/
     if (ec) { return fail(ec, "handshake"); }
     __is_live = true;
     __doRead();
@@ -188,7 +189,7 @@ void Session::__analizeRequest()
         search_successful = false;
 
         string worker_id = (*__sp_db_marusia_station)->at("WorkerId").at(__pos_ms_field);
-        string second_worker_id = (*__sp_db_marusia_station)->at("WokerSecId").at(__pos_ms_field);
+        string second_worker_id = (*__sp_db_marusia_station)->at("SecondWorkerId").at(__pos_ms_field);
         
         string temp_var;
         try {
@@ -226,9 +227,9 @@ void Session::__analizeRequest()
         search_successful = false;
         string lb_id = (*__sp_db_marusia_station)->at("LiftBlockId")[__pos_ms_field];
 
-        if ((*__sp_db_lift_blocks)->at("LiftId")[__pos_lb_field] != lb_id) {
+        if ((*__sp_db_lift_blocks)->at("Id")[__pos_lb_field] != lb_id) {
             __pos_lb_field = 0;
-            for (auto i = (*__sp_db_lift_blocks)->at("LiftId").begin(), end = (*__sp_db_lift_blocks)->at("LiftId").end(); i != end; i++) {
+            for (auto i = (*__sp_db_lift_blocks)->at("Id").begin(), end = (*__sp_db_lift_blocks)->at("Id").end(); i != end; i++) {
                 if (lb_id == (*i)) {
                     search_successful = true;
                     break;
@@ -239,7 +240,7 @@ void Session::__analizeRequest()
 
         search_successful = false;
         worker_id = (*__sp_db_lift_blocks)->at("WorkerLuId").at(__pos_lb_field);
-        second_worker_id = (*__sp_db_lift_blocks)->at("WorkerLuSecId").at(__pos_lb_field);
+        second_worker_id = (*__sp_db_lift_blocks)->at("SecondWorkerLuId").at(__pos_lb_field);
         try {
             temp_var = __sessions_mqtt->at(__pos_worker_lu)->getId();
 
@@ -295,7 +296,6 @@ http::message_generator Session::__badRequest(beast::string_view why) {
 void Session::__callbackWorkerMarussia(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
-    //boost::locale::generator gen;
     __request_mqtt = {};
     cout << "__callbackWorkerMarussia : " << data << endl;
 
@@ -314,7 +314,6 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
         else if (target == "move_lift") {
             if (__sessions_mqtt->size() == 0) {
                 throw invalid_argument("session mqtt size = 0");
-                //throw exception("session mqtt size = 0");
             }
             __request_mqtt.station_id = data.at("response").at("station_id").as_string();
             __request_mqtt.floor = stoi(data.at("response").at("mqtt_command").at("value").as_string().c_str());
@@ -334,12 +333,6 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
     };
     /*------------*/
     if (target == "error") {
-        /*������ ��������� ������� ������ �������� ����������*/
-        /*����������� ��������� � ��� ��� ������ �������� ����������*/
-       // u8string text = u8"Извините пожалуйста сервис временно недоступен";
-        
-        //string result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
-        
         response_data =
         {
             {"text", "Извините пожалуйста сервис временно недоступен"},
@@ -370,13 +363,9 @@ void Session::__callbackWorkerMQTT(boost::json::value data) {
     try {
         if (target == "mqtt_message") {
             if (data.at("response").at("status") == "success") {
-                //text = u8"Могу ли я ещё чем-нибудь помочь?";
-                //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
                 result_text = "Могу ли я ещё чем-нибудь помочь?";
             }
             else {
-                //text = u8"Извините пожалуйста сервис временно недоступен";
-                //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
                 result_text = "Извините пожалуйста сервис временно недоступен";
             }
             response_data =
@@ -398,10 +387,6 @@ void Session::__callbackWorkerMQTT(boost::json::value data) {
 
     /*------------*/
     if (target == "error") {
-        /*������ ��������� ������� ������ �������� ����������*/
-        /*����������� ��������� � ��� ��� ������ �������� ����������*/
-        //text = u8"Извините пожалуйста сервис временно недоступен";
-        //result_text = boost::locale::conv::to_utf<char>(string(text.begin(), text.end()), gen(""));
         result_text = "Извините пожалуйста сервис временно недоступен";
         response_data =
         {

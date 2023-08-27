@@ -48,7 +48,7 @@ public:
 		}
 		try
 		{
-			__count_threads = stoi(__config_info.at("count_threads"));
+			__count_threads = stoi(__config_info.at("Count_threads"));
 		}
 		catch (exception& e)
 		{
@@ -80,8 +80,8 @@ private:
 	shared_ptr<Config> __config;
 	map<string, string> __config_info;
 	shared_ptr<tcp::socket> __sock;
-	static const int CONFIG_NUM_FIELDS = 1;
-	vector<string> CONFIG_FIELDS = { "Id", "Main_server_ip", "Main_server_port", "BD_ip", "BD_port", "BD_login", "BD_password", "count_threads"};
+	static const int CONFIG_NUM_FIELDS = 8;
+	vector<string> CONFIG_FIELDS = { "Id", "Main_server_ip", "Main_server_port", "BD_ip", "BD_port", "BD_login", "BD_password", "Count_threads"};
 	int __count_threads;
 	shared_ptr<net::io_context> __ioc;
 	shared_ptr<Worker> __session;

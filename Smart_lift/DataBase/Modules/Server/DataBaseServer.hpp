@@ -560,7 +560,7 @@ public:
 		__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
 		__log_server = log_server;
 		__config_info = config_info;
-		string port = __config_info.at("port");
+		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
 

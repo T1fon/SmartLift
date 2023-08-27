@@ -1,5 +1,5 @@
 #include "MainServer.hpp"
-
+using namespace boost::placeholders;
 MainServer::MainServer() {}
 MainServer::~MainServer() {
 	stop();
@@ -9,6 +9,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__logger = make_shared<Log>("","./","MainServer");
 	__configer = make_shared<Config>(__logger, "./", path_to_config_file);
 	__configer->readConfig();
+	__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
 	map<string, string> configuration = __configer->getConfigInfo();
 	try {
 		if (configuration.size() == 0) {
@@ -24,6 +25,9 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 		__port_worker_mqtt_info = stoi(configuration.at("Worker_MQTT_info_port"));
 		__port_worker_marusia = stoi(configuration.at("Worker_marusia_port"));
 		__count_threads = stoi(configuration.at("Count_threads"));
+		if(load_server_certificate(*__ssl_ctx, configuration.at("Path_to_ssl_cert"),configuration.at("Path_to_ssl_key")) == -1){
+			throw invalid_argument("Lead sertificate error");
+		}
 		if (__port_marusia_station < 1 || __port_mqtt < 1 || __port_worker_mqtt < 1 ||
 			__port_worker_mqtt_info < 1 || __port_worker_marusia < 1 || __count_threads < 1) 
 		{
@@ -37,8 +41,8 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	}
 	
 	__io_ctx = make_shared<boost::asio::io_context>(__count_threads);
-	__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
-	load_server_certificate(*__ssl_ctx);
+	
+	
 	__server_w_mqtt = make_shared<worker_server::Server>(__io_ctx, __port_worker_mqtt_info,worker_server::WORKER_MQTT_T);
 	__server_w_marusia = make_shared<worker_server::Server>(__io_ctx, __port_worker_marusia, worker_server::WORKER_MARUSIA_T);
 	__server_https = make_shared<https_server::Listener>(*__io_ctx, *__ssl_ctx,__port_marusia_station, __server_w_mqtt->getSessions(), __server_w_marusia->getSessions());
@@ -92,19 +96,19 @@ void MainServer::__loadDataBase() {
 	__client_db->setCallback(bind(&MainServer::__startServers, this, _1));
 	
 	__table_name.push("WorkerMarussia");
-	__table_fields.push({"WorkerMId"});
+	__table_fields.push({"Id"});
 	__table_conditions.push("");
 	
 	__table_name.push("WorkerLU");
-	__table_fields.push({ "WorkerLuId", "WorkerLuAdd", "WorkerLuPort"});
+	__table_fields.push({ "Id", "Address", "Port"});
 	__table_conditions.push("");
 
 	__table_name.push("MarussiaStation");
-	__table_fields.push({ "ApplicationId", "WorkerId", "WokerSecId", "LiftBlockId"});
+	__table_fields.push({ "ApplicationId", "WorkerId", "SecondWorkerId", "LiftBlockId"});
 	__table_conditions.push("");
 
 	__table_name.push("LiftBlocks");
-	__table_fields.push({ "LiftId", "WorkerLuId", "WorkerLuSecId", "Descriptor"});
+	__table_fields.push({ "Id", "WorkerLuId", "SecondWorkerLuId", "Descriptor"});
 	__table_conditions.push("");
 
 	__client_db->setQuerys(__table_name, __table_fields, __table_conditions);

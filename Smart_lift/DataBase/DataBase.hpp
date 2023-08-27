@@ -11,8 +11,8 @@ private:
 	shared_ptr<Config> __config;
 	shared_ptr<Log> __log_server;
 	map<string, string> __config_info;
-	static const int CONFIG_NUM_FIELDS = 1;
-	vector<string> CONFIG_FIELDS = { "port", "count_threads"};
+	static const int CONFIG_NUM_FIELDS = 2;
+	vector<string> CONFIG_FIELDS = { "Port", "Count_threads"};
 public:
 	ServerDataBase()
 	{
@@ -50,7 +50,7 @@ public:
 			return;
 		}
 		__server = make_shared<Server>(__ioc, "", __log_server, __config_info);
-		__countThreads = stoi(__config_info.at("count_threads"));
+		__countThreads = stoi(__config_info.at("Count_threads"));
 		__server->run();
 
 		std::vector<std::thread> v;

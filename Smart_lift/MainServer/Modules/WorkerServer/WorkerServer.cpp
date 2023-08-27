@@ -121,16 +121,16 @@ void Session::_autorization() {
         bool successful_find = false;
 
         /*��������� ���� �� ����� ������������*/
-        string worker_name = "";
+        string worker_name_id = "Id";
 
-        if((*_sp_db_worker_ids)->find("WorkerMId") != (*_sp_db_worker_ids)->end()){
+        /*if((*_sp_db_worker_ids)->find("WorkerMId") != (*_sp_db_worker_ids)->end()){
             worker_name = "WorkerMId";
         }
         else {
             worker_name = "WorkerLuId";
-        }
+        }*/
 
-        for (auto i = (*_sp_db_worker_ids)->at(worker_name).begin(), end = (*_sp_db_worker_ids)->at(worker_name).end(); i != end; i++) {
+        for (auto i = (*_sp_db_worker_ids)->at(worker_name_id).begin(), end = (*_sp_db_worker_ids)->at(worker_name_id).end(); i != end; i++) {
             if (_id == (*i)) {
                 successful_find = true;
                 break;
