@@ -542,6 +542,7 @@ private:
 			house_vec = __db_info.at("StaticPhrases").at("HouseNum");
 			comp_vec = __db_info.at("StaticPhrases").at("HouseComplexId");
 			vector<string> resp = __db_info.at("StaticPhrases").at("Response");
+			bool flag_stop_search = false;
 
 			for (size_t i = 0; i < buf_vec.size(); i++)
 			{
@@ -569,16 +570,22 @@ private:
 					string buf_variant;
 					remove_copy(vector_variants[j].begin(), vector_variants[j].end(), back_inserter(buf_variant), '"');
 					cerr << command << " " << buf_variant << endl;
-					if (command == buf_variant)
+					if (command.find(buf_variant)!= string::npos)
 					{
-						cerr << "num_h " << num_house << " " << house_vec[i] << endl << "comp_id " << comp_id << " " << comp_vec[i] << endl;
+						cerr << command << " " << buf_variant << endl;
 						if (num_house == house_vec[i] && comp_id == comp_vec[i])
 						{
 							cerr << "resp" << resp[i] << endl;
 							__response_command = resp[i];
+							flag_stop_search = true;
 							break;
 						}
 					}
+				}
+				if (flag_stop_search)
+				{
+					flag_stop_search = false;
+					break;
 				}
 			}
 			if (!__response_command.empty())
