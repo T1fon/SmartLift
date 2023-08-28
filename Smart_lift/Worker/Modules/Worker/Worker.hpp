@@ -212,6 +212,7 @@ private:
 		{
 			cerr << "reciveCommand " << eC.message() << endl;
 			this->stop();
+			Sleep(2000);
 			this->__connectToMS();
 			//__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
@@ -251,17 +252,32 @@ private:
 			}
 		}
 		fill_n(__buf_recive, BUF_RECIVE_SIZE, 0);
-		__buf_json_recive = {};
-		__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+
+		__json_string = __buf_json_recive.front();
+		__buf_json_recive.pop();
+		if (__json_string.at("response").at("status") == "fail")
+		{
+			this->stop();
+			Sleep(2000);
+			__connectToMS();
+		}
+		else
+		{
+			__buf_json_recive = {};
+			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__sendResponse, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+		}
 	}
 
 	void __sendResponse(const boost::system::error_code& eC, size_t bytes_recive)
 	{
 		if (eC)
 		{
-			cerr << "reciveCommand " << eC.message() << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			cerr << "reciveCommandResp " << eC.message() << endl;
+			this->stop();
+			Sleep(2000);
+			this->__connectToMS();
 			return;
+			
 		}
 
 		size_t count_byte, count_byte_write = 0;
@@ -572,7 +588,9 @@ private:
 					string buf_variant;
 					remove_copy(vector_variants[j].begin(), vector_variants[j].end(), back_inserter(buf_variant), '"');
 					cerr << command << " " << buf_variant << endl;
-					if (command.find(buf_variant)!= string::npos)
+					size_t pos = command.find(buf_variant);
+					cerr << "pos" << pos << endl;
+					if (pos!= string::npos)
 					{
 						cerr << command << " " << buf_variant << endl;
 						if (num_house == house_vec[i] && comp_id == comp_vec[i])
