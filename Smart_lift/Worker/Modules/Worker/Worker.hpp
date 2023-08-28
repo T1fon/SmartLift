@@ -189,7 +189,7 @@ private:
 			#endif
 			
 			this->stop();
-			this->start();
+			this->__connectToMS();
 			return;
 		}
 
@@ -226,7 +226,9 @@ private:
 		if (eC)
 		{
 			cerr << "reciveCommand " << eC.message() << endl;
-			__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
+			this->stop();
+			this->__connectToMS();
+			//__socket->async_receive(net::buffer(__buf_recive, BUF_RECIVE_SIZE), boost::bind(&Worker::__reciveCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			return;
 		}
 
