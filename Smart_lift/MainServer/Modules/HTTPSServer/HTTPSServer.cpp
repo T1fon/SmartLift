@@ -12,15 +12,19 @@ void https_server::fail(beast::error_code ec, char const* what) {
 
 Session::Session(tcp::socket&& socket,
     ssl::context& ssl_ctx,
+    std::string path_to_ssl_certificate,
+    std::string path_to_ssl_key,
     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia,
     std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station,
-    std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks): __stream(std::move(socket), ssl_ctx)
+    std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks): __stream(std::move(socket), ssl_ctx), __ssl_ctx(ssl_ctx)
 {
     __sp_db_marusia_station = sp_db_marusia_station;
     __sp_db_lift_blocks = sp_db_lift_blocks;
     __sessions_marusia = sessions_marussia;
     __sessions_mqtt = sessions_mqtt;
+    __path_to_ssl_certificate = path_to_ssl_certificate;
+    __path_to_ssl_key = path_to_ssl_key;
 }
 
 void Session::run() {
@@ -36,7 +40,13 @@ void Session::__onRun() {
 }
 void Session::__onHandshake(beast::error_code ec) {
     /*тут нужно добавить перечтение ssl сертификата*/
-    if (ec) { return fail(ec, "handshake"); }
+    if (ec) { 
+        if(load_server_certificate(__ssl_ctx,__path_to_ssl_certificate, __path_to_ssl_key) == -1){
+            return fail(ec, "handshake"); 
+        }
+        this->run();
+        return;
+    }
     __is_live = true;
     __doRead();
 }
@@ -60,7 +70,7 @@ void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred)
     if (ec) { return fail(ec, "read"); }
 
     // Send the response
-    //__sendResponse(__analizeRequest());
+    
     __analizeRequest();
 }
 void Session::__sendResponse(http::message_generator&& msg) {
@@ -107,8 +117,9 @@ bool Session::isLive() {
 
 void Session::__analizeRequest()
 {
-    std::cout << std::endl << __req.method() << std::endl << std::endl;
+    
     if (__req.method() != http::verb::post && __req.method() != http::verb::options) {
+        std::cout << std::endl << __req.method() << std::endl << std::endl;
         __req = {};
         __sendResponse(__badRequest("Method not equal OPTIONS OR POST\n"));
         return;
@@ -134,10 +145,6 @@ void Session::__analizeRequest()
     //POST
     beast::error_code err_code;
 
-    //std::cout << "REQUEST" << std::endl;
-    //std::cout << "Base: " << __req.base() << std::endl;
-    //std::cout << "Body: " << __req.body() << std::endl;
-
     try {
         __parser.reset();
         __parser.write(__req.body(), err_code);
@@ -159,7 +166,6 @@ void Session::__analizeRequest()
     }
     __body_request = __parser.release();
 
-    //�������� ���� ���������
     if (__sessions_marusia->size() == 0) {
         cerr << "__session_marussia size = 0" << endl;
         __callbackWorkerMarussia({});
@@ -182,7 +188,6 @@ void Session::__analizeRequest()
         else { search_successful = true; }
         
         if (!search_successful) {
-            //throw exception(string("application id not found: " + application_id).c_str());
             throw invalid_argument(string("application id not found: " + application_id).c_str());
         }
         /*-----------------------------------------*/
@@ -194,13 +199,11 @@ void Session::__analizeRequest()
         string temp_var;
         try {
             temp_var = __sessions_marusia->at(__pos_worker_marusia)->getId();
-            //cout << "TEMP_VAR = " << temp_var << endl;
             if (temp_var == worker_id || temp_var == second_worker_id) {
                 search_successful = true;
             }
             else {
                 throw invalid_argument("");
-                //throw exception("");
             }
         }
         catch (exception& e) {
@@ -279,7 +282,7 @@ void Session::__analizeRequest()
     }
     catch (exception& e) {
         cerr << "__analizeRequest: " << e.what() << endl;
-        __doClose();
+        __callbackWorkerMarussia({{"target", "application_not_found"}});
     }
     
 }
@@ -297,7 +300,6 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
     __request_mqtt = {};
-    cout << "__callbackWorkerMarussia : " << data << endl;
 
     try {
         target = data.at("target");
@@ -318,11 +320,12 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
             __request_mqtt.station_id = data.at("response").at("station_id").as_string();
             __request_mqtt.floor = stoi(data.at("response").at("mqtt_command").at("value").as_string().c_str());
             __request_mqtt.lift_block_id = data.at("response").at("mqtt_command").at("lb_id").as_string();
-            cout << "\n\n POSITION  " << __pos_worker_lu << endl <<endl;
+
             __sessions_mqtt->at(__pos_worker_lu)->startCommand(worker_server::Session::COMMAND_CODE_MQTT::MOVE_LIFT, (void*)&(__request_mqtt),
                 boost::bind(&Session::__callbackWorkerMQTT, this, _1));
             return;
         }
+        else if(target == "application_not_found"){}
         else {
             target = "error";
         }
@@ -337,7 +340,15 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
         {
             {"text", "Извините пожалуйста сервис временно недоступен"},
             {"tts", "Извините пожалуйста сервис временно недоступен"},
-            {"end_session", true}, //mb ne nado zakrivat
+            {"end_session", false}, //mb ne nado zakrivat
+        };
+    }
+    else if(target == "application_not_found"){
+        response_data =
+        {
+            {"text", "Данное устройство не подключено к системе \"Умный лифт\". Чтобы решить проблему свяжитесь с поставщиком услуги"},
+            {"tts", "Данное устройство не подключено к системе \"Умный лифт\". Чтобы решить проблему свяжитесь с поставщиком услуги"},
+            {"end_session", false}, //mb ne nado zakrivat
         };
     }
 
@@ -346,10 +357,8 @@ void Session::__callbackWorkerMarussia(boost::json::value data) {
 void Session::__callbackWorkerMQTT(boost::json::value data) {
     boost:json::value target;
     boost::json::object response_data = {};
-    //boost::locale::generator gen;
     u8string text;
     string result_text;
-    cout << "__callbackWorkerMQTT : " << data << endl;
 
     try {
         target = data.at("target");
@@ -372,7 +381,7 @@ void Session::__callbackWorkerMQTT(boost::json::value data) {
             {
                 {"text", result_text},
                 {"tts", result_text},
-                {"end_session", false}, //mb ne nado zakrivat
+                {"end_session", false}, 
             };
         }
         else {
@@ -408,7 +417,7 @@ void Session::__constructResponse(boost::json::object response_data) {
         {"user_id", __body_request.at("session").at("application").at("application_id")},
         {"message_id", __body_request.at("session").at("message_id").as_int64()}
     };
-    __body_response["version"] = { "1.0" };
+    __body_response["version"] = "1.0";
 
     http::response<http::string_body> response{
         std::piecewise_construct,
@@ -431,6 +440,8 @@ void Session::__constructResponse(boost::json::object response_data) {
 
 Listener::Listener( net::io_context& io_ctx,
                     ssl::context& ssl_ctx,
+                    std::string path_to_ssl_certificate,
+                    std::string path_to_ssl_key,
                     unsigned short port,
                     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
                     std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia): 
@@ -444,6 +455,8 @@ Listener::Listener( net::io_context& io_ctx,
     __sessions_marussia = sessions_marussia;
     __timer_kill = std::make_shared<boost::asio::deadline_timer>(io_ctx);
     __sessions = std::make_shared<std::vector<std::shared_ptr<https_server::Session>>>();
+    __path_to_ssl_certificate = path_to_ssl_certificate;
+    __path_to_ssl_key = path_to_ssl_key;
 }
 void Listener::start(std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station, std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks) {
     __sp_db_marusia_station = sp_db_marusia_station;
@@ -483,6 +496,8 @@ void Listener::__onAccept(beast::error_code ec, tcp::socket socket) {
         __sessions->push_back(std::make_shared<https_server::Session>(
                                 std::move(socket),
                                 __ssl_ctx,
+                                __path_to_ssl_certificate,
+                                __path_to_ssl_key,
                                 __sessions_mqtt, __sessions_marussia, 
                                 __sp_db_marusia_station, __sp_db_lift_blocks));
         __sessions->back()->run();

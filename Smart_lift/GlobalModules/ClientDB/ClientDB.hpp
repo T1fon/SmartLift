@@ -76,7 +76,7 @@ public:
 		if(!queue_conditions.empty())
 		{
 			__queue_conditions = queue_conditions;
-			cerr << "cond " << __queue_conditions.size() << " tables" << __queue_tables.size() << endl;
+			//cerr << "cond " << __queue_conditions.size() << " tables" << __queue_tables.size() << endl;
 			if (__queue_conditions.size() != __queue_tables.size())
 			{
 				cerr << "ERROR, Not full conditions WHERE( if WHERE is not needed, put " ")";
@@ -106,9 +106,12 @@ private:
 	{
 		if (error_code)
 		{
-			cerr << error_code	.what() << endl;
-			//Sleep(2000);
-			sleep(2000);
+			//cerr << error_code	.what() << endl;
+			#ifndef UNIX
+				sleep(2);
+			#else
+				Sleep(2000);
+			#endif
 			this->stop();
 			this->start();
 			return;
@@ -159,7 +162,7 @@ private:
 						__flag_conditions = false;
 					}
 				}
-				cerr << query << endl;
+				//cerr << query << endl;
 				__buf_queue_string = boost::json::serialize(json_formatter::database::request::query(__name_sender, json_formatter::database::QUERY_METHOD::SELECT, __fields_name_send, query));
 				__socket->async_send(boost::asio::buffer(__buf_queue_string, __buf_queue_string.size()), boost::bind(&ClientDB::__sendCommand, shared_from_this(), boost::placeholders::_1, boost::placeholders::_2));
 			}
@@ -180,7 +183,7 @@ private:
 	{
 		if (error_code)
 		{
-			cerr << "sendConnect" << error_code.what() << endl;
+			//cerr << "sendConnect" << error_code.what() << endl;
 			this->stop();
 			this->start();
 			return;
@@ -243,11 +246,11 @@ private:
 	void __commandAnalize(const boost::system::error_code& error_code)
 	{
 		boost::json::value target = __buf_json_recive.at("target");
-		cerr << __buf_json_recive << endl;
+		//cerr << __buf_json_recive << endl;
 		if (target == "connect")
 		{
 			boost::json::value status = __buf_json_recive.at("response").at("status");
-			cout << "status " << status << endl;
+			//cout << "status " << status << endl;
 			{
 				if (status != "success")
 				{
@@ -300,7 +303,7 @@ private:
 			catch (exception& e)
 			{
 				whronge = true;
-				cout << "No " << __table_name_send << endl;
+				//cout << "No " << __table_name_send << endl;
 			}
 			__checkConnect(error_code);
 		}

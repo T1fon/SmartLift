@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include "../WorkerServer/WorkerServer.hpp"
+#include "../SSLSertificate/Sertificate.hpp"
 
 namespace https_server {
 
@@ -36,6 +37,7 @@ namespace https_server {
 
     class Session : public std::enable_shared_from_this<Session>
     {
+        ssl::context& __ssl_ctx;
         beast::ssl_stream<beast::tcp_stream> __stream;
         beast::flat_buffer __buffer;
         http::request<http::string_body> __req;
@@ -57,9 +59,14 @@ namespace https_server {
 
         worker_server::SessionMarusia::marussia_station_request_t __request_marusia;
         worker_server::SessionMQTT::move_lift_t __request_mqtt;
+
+        std::string __path_to_ssl_certificate;
+        std::string __path_to_ssl_key;
     public:
         explicit Session(tcp::socket&& socket,
             ssl::context& ssl_ctx,
+            std::string path_to_ssl_certificate,
+            std::string path_to_ssl_key,
             std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
             std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia,
             std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station, 
@@ -103,10 +110,14 @@ namespace https_server {
         std::shared_ptr< shared_ptr<map<string, vector<string>>>> __sp_db_marusia_station;
         std::shared_ptr< shared_ptr<map<string, vector<string>>>> __sp_db_lift_blocks;
 
+        std::string __path_to_ssl_certificate;
+        std::string __path_to_ssl_key;
     public:
         Listener( net::io_context& io_ctx,
                   ssl::context& ssl_ctx,
-                    unsigned short port,
+                  std::string path_to_ssl_certificate,
+                  std::string path_to_ssl_key,
+                  unsigned short port,
                   std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_mqtt,
                   std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia);
         void start(std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station, std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks);

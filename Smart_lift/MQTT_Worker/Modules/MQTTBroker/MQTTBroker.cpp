@@ -69,6 +69,13 @@ void MQTTBroker::init(){
                     std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
                     try {
                         (*__sp_db_map_login_password)->at("\"" + username->to_string() + "\"");
+                        string temp_client_id = client_id.data();
+                        static const string SEARCH_PHRASE = "LKDS_LU";
+                        static const int SPACE = 32;
+                        static const int SIZE_SEARCH_PHRASE = sizeof(SEARCH_PHRASE);
+                        size_t pos_lkds_lu = temp_client_id.find(SEARCH_PHRASE);
+                        size_t pos_number_space = temp_client_id.find(SPACE, pos_lkds_lu + SIZE_SEARCH_PHRASE);
+                        __lu_blocks_id.push_back(temp_client_id.substr(pos_lkds_lu, pos_number_space));
                         auto sp = __wp.lock();
                         BOOST_ASSERT(sp);
                         __connections.insert(sp);
@@ -192,6 +199,14 @@ void MQTTBroker::start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_log
         cout << i->first << " " << i->second << endl;
     }
     __server->listen();
+}
+bool MQTTBroker::searchLiftBlocks(string lu_descriptor){
+    for(auto i = __lu_blocks_id.begin(), end = __lu_blocks_id.end(); i != end; i++){
+        if(*i == lu_descriptor){
+            return true;
+        }
+    }
+    return false;
 }
 void MQTTBroker::stop(){
     __server->close();

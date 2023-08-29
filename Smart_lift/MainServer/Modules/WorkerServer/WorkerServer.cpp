@@ -165,7 +165,6 @@ Session::_CHECK_STATUS Session::_reciveCheck(const size_t& count_recive_byte, _h
         catch (exception& e) {
             cerr << e.what() << endl;
         }
-        cout << "BUF_RECIVE " << _buf_recive << endl;
 
         if (!_json_parser.done()) {
             fill_n(_buf_recive, _BUF_RECIVE_SIZE, 0);
@@ -216,7 +215,6 @@ void Session::_sendCommand(const boost::system::error_code& error, std::size_t c
         this->stop();
         return;
     }
-    cout <<"NEXT RECIVE " << _next_recive << endl;
     if (_next_recive) {
         _next_recive = false;
         _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
@@ -247,7 +245,6 @@ void Session::_ping(const boost::system::error_code& error)
         return;
     }
     _buf_send = serialize(json_formatter::worker::request::ping(_sender));
-    cout << _buf_send << endl;
     _next_recive = true;
     _ping_success = false;
     _dead_ping_timer.cancel();
@@ -262,7 +259,6 @@ void Session::_analizePing()
     boost::json::value analise_value = _buf_json_recive.front();
     _buf_json_recive.pop();
     try {
-        //cout << _buf_json_recive << endl;
         if (analise_value.at("response").at("status") == "success") {
             _ping_success = true;
             _dead_ping_timer.cancel();
@@ -271,7 +267,7 @@ void Session::_analizePing()
         }
         else {
             _is_live = false;
-            cerr << "_analizePing Error response status not equal success, status = " << analise_value.at("response").at("status") << endl;
+            //cerr << "_analizePing Error response status not equal success, status = " << analise_value.at("response").at("status") << endl;
             this->stop();
             return;
         }
@@ -286,10 +282,9 @@ void Session::_deadPing(const boost::system::error_code& error) {
     if (!_ping_success) {
         //_dead_ping_timer.cancel();
         _is_live = false;
-        cout << "DEAD PING" << endl;
+
         if (error) {
             cerr << error << endl;
-            cerr << error.what() << " " << error.message() << endl;
         }
 
         this->stop();

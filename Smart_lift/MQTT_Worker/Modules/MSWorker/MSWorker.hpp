@@ -54,6 +54,6 @@ public:
 	void start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> lu_id_descriptor);
 	void stop();
 	void setCallback(callback_mqtt_worker_t callback_mqtt_worker);
-	void successMove(std::string station_id);
+	void responseMove(std::string station_id, bool success);
 	~MSWorker();
 };

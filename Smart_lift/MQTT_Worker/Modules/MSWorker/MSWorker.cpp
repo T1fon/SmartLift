@@ -206,9 +206,15 @@ void MSWorker::__moveLift() {
 void MSWorker::setCallback(callback_mqtt_worker_t callback_mqtt_worker) {
 	__callback_mqtt_worker = callback_mqtt_worker;
 }
-void MSWorker::successMove(std::string station_id) {
-	__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, station_id,
+void MSWorker::responseMove(std::string station_id, bool success) {
+	if(success){
+		__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, station_id,
 		json_formatter::STATUS_OPERATION::success));
+	}
+	else{
+		__buf_send = serialize(json_formatter::worker::response::mqtt_lift_move(__WORKER_NAME, station_id,
+		json_formatter::STATUS_OPERATION::fail));
+	}
 	
 	__socket->async_send(boost::asio::buffer(__buf_send, __buf_send.size()),
 		boost::bind(&MSWorker::__sendCommand, shared_from_this(), _1, _2));

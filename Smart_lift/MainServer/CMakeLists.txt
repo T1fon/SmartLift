@@ -51,7 +51,7 @@ set(MOD_Config "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/C
 set(MOD_Log "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
 set(MOD_JSON_Formatter "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.hpp" "${GLOBAL_MODULES}/JSONFormatter/JSONFormatter.cpp")
 set(MOD_Server "${MODULES}/WorkerServer/WorkerServer.hpp" "${MODULES}/WorkerServer/WorkerServer.cpp")
-set(MOD_Sertificate "${MODULES}/SSLSertificateLocalhost/Sertificate.hpp")
+set(MOD_Sertificate "${MODULES}/SSLSertificate/Sertificate.hpp")
 set(MOD_HTTPS_Server "${MODULES}/HTTPSServer/HTTPSServer.hpp" "${MODULES}/HTTPSServer/HTTPSServer.cpp")
 set(MOD_Client_DB "${GLOBAL_MODULES}/ClientDB/ClientDB.hpp")
 

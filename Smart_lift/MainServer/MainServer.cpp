@@ -10,6 +10,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__configer = make_shared<Config>(__logger, "./", path_to_config_file);
 	__configer->readConfig();
 	__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
+	//__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::ssl);
 	map<string, string> configuration = __configer->getConfigInfo();
 	try {
 		if (configuration.size() == 0) {
@@ -25,7 +26,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 		__port_worker_mqtt_info = stoi(configuration.at("Worker_MQTT_info_port"));
 		__port_worker_marusia = stoi(configuration.at("Worker_marusia_port"));
 		__count_threads = stoi(configuration.at("Count_threads"));
-		if(load_server_certificate(*__ssl_ctx, configuration.at("Path_to_ssl_cert"),configuration.at("Path_to_ssl_key")) == -1){
+		if(load_server_certificate(*__ssl_ctx, configuration.at("Path_to_ssl_sertificate"),configuration.at("Path_to_ssl_key")) == -1){
 			throw invalid_argument("Lead sertificate error");
 		}
 		if (__port_marusia_station < 1 || __port_mqtt < 1 || __port_worker_mqtt < 1 ||
@@ -35,7 +36,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 			throw invalid_argument("Port <= 0");
 		}
 	}
-	catch (exception& e) {
+	catch (invalid_argument& e) {
 		cerr << e.what() << endl;
 		return PROCESS_CODE::CONFIG_DATA_NOT_FULL;
 	}
@@ -45,7 +46,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	
 	__server_w_mqtt = make_shared<worker_server::Server>(__io_ctx, __port_worker_mqtt_info,worker_server::WORKER_MQTT_T);
 	__server_w_marusia = make_shared<worker_server::Server>(__io_ctx, __port_worker_marusia, worker_server::WORKER_MARUSIA_T);
-	__server_https = make_shared<https_server::Listener>(*__io_ctx, *__ssl_ctx,__port_marusia_station, __server_w_mqtt->getSessions(), __server_w_marusia->getSessions());
+	__server_https = make_shared<https_server::Listener>(*__io_ctx, *__ssl_ctx,configuration.at("Path_to_ssl_sertificate"),configuration.at("Path_to_ssl_key"),__port_marusia_station, __server_w_mqtt->getSessions(), __server_w_marusia->getSessions());
 	__client_db = std::make_shared<ClientDB>(__db_ip, to_string(__port_db), __db_login, __db_password, 
 										"Main_server", std::make_shared<boost::asio::ip::tcp::socket>(*__io_ctx), 
 										bind(&MainServer::__updateDataCallback, this,_1));
@@ -80,7 +81,7 @@ void MainServer::__startServers(map<string, map<string, vector<string>>> data) {
 		cerr << "StartServers: " << e.what();
 		return;
 	}
-	/*��������� ������ �� ���������� ������*/
+	
 	__client_db->setCallback(bind(&MainServer::__updateDataCallback, this, _1)); 
 	__update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
 	__update_timer->async_wait(boost::bind(&MainServer::__updateTimerCallback, this, _1));
