@@ -1,6 +1,7 @@
-
+#include "boost/json.hpp"
 #include "JSONFormatter.hpp"
 #include <iostream>
+
 using namespace std;
 int main(int argc, char** argv) {
 
@@ -27,6 +28,7 @@ int main(int argc, char** argv) {
         "LU911",
         5) << endl;
     cout << json_formatter::worker::response::mqtt_lift_move("Worker_MQTT", "LU911", json_formatter::STATUS_OPERATION::success) << endl;
+    cout << json_formatter::worker::response::errorTarget("Data_base", boost::json::value("bla bla"), json_formatter::ERR_CODE::TARGET, "") << endl;
 
     cout << endl << endl << endl;
     cout << "Data Base" << endl << endl;
@@ -47,6 +49,7 @@ int main(int argc, char** argv) {
     cout << json_formatter::database::response::query("Data_base",
         json_formatter::database::QUERY_METHOD::SELECT,
         { {"id",{"1","2","3"}} , { "name", {"Russia", "England", "USA"}} }) << endl;
+    cout << json_formatter::database::response::errorTarget("Data_base", boost::json::value("bla bla"), json_formatter::ERR_CODE::TARGET, "") << endl;
     return 0;
 
 }
