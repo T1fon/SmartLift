@@ -72,10 +72,11 @@ void MQTTBroker::init(){
                         string temp_client_id = client_id.data();
                         static const string SEARCH_PHRASE = "LKDS_LU";
                         static const int SPACE = 32;
-                        static const int SIZE_SEARCH_PHRASE = sizeof(SEARCH_PHRASE);
+                        static const int SIZE_SEARCH_PHRASE = SEARCH_PHRASE.size();
                         size_t pos_lkds_lu = temp_client_id.find(SEARCH_PHRASE);
                         size_t pos_number_space = temp_client_id.find(SPACE, pos_lkds_lu + SIZE_SEARCH_PHRASE);
-                        __lu_blocks_id.push_back(temp_client_id.substr(pos_lkds_lu, pos_number_space));
+                        cout <<"NEW LU: "<< temp_client_id.substr(pos_lkds_lu + SIZE_SEARCH_PHRASE, pos_number_space - SIZE_SEARCH_PHRASE) << " " << pos_number_space<< endl;
+                        __lu_blocks_id.push_back(temp_client_id.substr(pos_lkds_lu + SIZE_SEARCH_PHRASE, pos_number_space - SIZE_SEARCH_PHRASE));
                         auto sp = __wp.lock();
                         BOOST_ASSERT(sp);
                         __connections.insert(sp);
@@ -94,7 +95,7 @@ void MQTTBroker::init(){
             );
             ep.set_disconnect_handler(
                 [this]
-            () {
+                () {
                     std::cout << "[server] disconnect received." << std::endl;
                     auto sp = __wp.lock();
                     BOOST_ASSERT(sp);
@@ -202,6 +203,7 @@ void MQTTBroker::start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_log
 }
 bool MQTTBroker::searchLiftBlocks(string lu_descriptor){
     for(auto i = __lu_blocks_id.begin(), end = __lu_blocks_id.end(); i != end; i++){
+        cout << *i << " " << lu_descriptor << endl;
         if(*i == lu_descriptor){
             return true;
         }

@@ -125,5 +125,5 @@ namespace https_server {
     private:
         void __onAccept(beast::error_code ec, tcp::socket socket);
         void __killSession(beast::error_code ec);
-    };
+    };   
 }

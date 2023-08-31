@@ -92,8 +92,9 @@ void MQTTWorker::stop() {
 void MQTTWorker::moveLift(string lu_description, string floor_number, string station_id) {
     __mqtt_worker = __mqtt_broker->getWorker();
     string temp_lu_descriptor = lu_description.substr(1, lu_description.size()-2);
-    
+    //cout << "Floor Number: " << floor_number << " " <<floor_number.substr(1, floor_number.size()-1) <<endl;
     if(__mqtt_broker->searchLiftBlocks(temp_lu_descriptor)){
+        cout << "LU" + lu_description.substr(1, lu_description.size() - 2) +"/set/cmd" << "{\"cmdlft\":[1," + floor_number + string("]}") << endl;
         __mqtt_worker->async_publish("LU" + lu_description.substr(1, lu_description.size() - 2) +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}");
         __ms_worker->responseMove(station_id, true);
     }

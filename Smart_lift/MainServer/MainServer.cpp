@@ -10,7 +10,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__configer = make_shared<Config>(__logger, "./", path_to_config_file);
 	__configer->readConfig();
 	__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::tlsv12);
-	//__ssl_ctx = make_shared<boost::asio::ssl::context>(boost::asio::ssl::context::ssl);
+
 	map<string, string> configuration = __configer->getConfigInfo();
 	try {
 		if (configuration.size() == 0) {
@@ -50,6 +50,7 @@ MainServer::PROCESS_CODE MainServer::init(string path_to_config_file) {
 	__client_db = std::make_shared<ClientDB>(__db_ip, to_string(__port_db), __db_login, __db_password, 
 										"Main_server", std::make_shared<boost::asio::ip::tcp::socket>(*__io_ctx), 
 										bind(&MainServer::__updateDataCallback, this,_1));
+		
 	__update_timer = make_shared<boost::asio::deadline_timer>(*__io_ctx);
 	//__server_mqtt_repeater = make_shared<net_repeater::Server>(__io_ctx, __port_mqtt, __server_w_mqtt->getSessions());
 	return PROCESS_CODE::SUCCESSFUL;
@@ -82,10 +83,9 @@ void MainServer::__startServers(map<string, map<string, vector<string>>> data) {
 		return;
 	}
 	
-	__client_db->setCallback(bind(&MainServer::__updateDataCallback, this, _1)); 
+	__client_db->setCallback(bind(&MainServer::__updateDataCallback, this, _1));
 	__update_timer->expires_from_now(boost::posix_time::seconds(__TIME_UPDATE));
 	__update_timer->async_wait(boost::bind(&MainServer::__updateTimerCallback, this, _1));
-
 	//__server_mqtt_repeater->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_lu), 
 	//							  make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_lift_blocks));
 	__server_w_mqtt->start(make_shared<shared_ptr<map<string, vector<string>>>>(__sp_db_worker_lu));
@@ -120,7 +120,7 @@ void MainServer::__updateData(map<string, map<string, vector<string>>> &data) {
 	shared_ptr<map<string, vector<string>>> temp_sp_db_worker_lu = make_shared<map<string, vector<string>>>(data.at("WorkerLU"));
 	shared_ptr<map<string, vector<string>>> temp_sp_db_marusia_station = make_shared<map<string, vector<string>>>(data.at("MarussiaStation"));
 	shared_ptr<map<string, vector<string>>> temp_sp_db_lift_blocks = make_shared<map<string, vector<string>>>(data.at("LiftBlocks"));
-
+	
 	__sp_db_worker_marusia = temp_sp_db_worker_marusia;
 	__sp_db_worker_lu = temp_sp_db_worker_lu;
 	__sp_db_marusia_station = temp_sp_db_marusia_station;

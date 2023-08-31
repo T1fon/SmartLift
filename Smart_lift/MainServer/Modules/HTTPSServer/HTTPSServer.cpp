@@ -36,7 +36,7 @@ void Session::__onRun() {
     beast::get_lowest_layer(__stream).expires_after(std::chrono::seconds(30));
     // Perform the SSL handshake
     __stream.async_handshake( ssl::stream_base::server, 
-                              beast::bind_front_handler( &Session::__onHandshake, this->shared_from_this() ));
+                              beast::bind_front_handler( &Session::__onHandshake, shared_from_this() ));
 }
 void Session::__onHandshake(beast::error_code ec) {
     /*тут нужно добавить перечтение ssl сертификата*/
@@ -58,7 +58,7 @@ void Session::__doRead() {
 
     // Read a request
     http::async_read(__stream, __buffer, __req,
-                    beast::bind_front_handler( &Session::__onRead, this->shared_from_this() ));
+                    beast::bind_front_handler( &Session::__onRead, shared_from_this() ));
 }
 void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred) 
 {
@@ -67,7 +67,10 @@ void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred)
     // This means they closed the connection
     if (ec == http::error::end_of_stream) { return __doClose(); }
 
-    if (ec) { return fail(ec, "read"); }
+    if (ec) 
+    { //return fail(ec, "read");
+        return;
+    }
 
     // Send the response
     
@@ -78,7 +81,7 @@ void Session::__sendResponse(http::message_generator&& msg) {
 
     // Write the response
     beast::async_write( __stream, std::move(msg),
-                        beast::bind_front_handler( &Session::__onWrite, this->shared_from_this(), keep_alive));
+                        beast::bind_front_handler( &Session::__onWrite, shared_from_this(), keep_alive));
 }
 void Session::__onWrite(bool keep_alive, beast::error_code ec, std::size_t bytes_transferred) {
     boost::ignore_unused(bytes_transferred);
@@ -97,6 +100,7 @@ void Session::__onWrite(bool keep_alive, beast::error_code ec, std::size_t bytes
     __doRead();
 }
 void Session::__doClose() {
+    __is_live = false;
     // Set the timeout.
     beast::get_lowest_layer(__stream).expires_after(std::chrono::seconds(30));
 
@@ -119,7 +123,8 @@ void Session::__analizeRequest()
 {
     
     if (__req.method() != http::verb::post && __req.method() != http::verb::options) {
-        std::cout << std::endl << __req.method() << std::endl << std::endl;
+
+        std::cout << std::endl << __req.method() << std::endl<< __req << std::endl << __req.body() << std::endl;
         __req = {};
         __sendResponse(__badRequest("Method not equal OPTIONS OR POST\n"));
         return;
@@ -287,11 +292,12 @@ void Session::__analizeRequest()
     
 }
 http::message_generator Session::__badRequest(beast::string_view why) {
+    __is_live = false;
     std::cout << "ERROR " << why << std::endl;
     http::response<http::string_body> res{http::status::bad_request, __req.version()};
     res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
     res.set(http::field::content_type, "application/json;charset=utf-8");
-    res.keep_alive(__req.keep_alive());
+    res.keep_alive(false);
     res.body() = std::string(why);
     res.prepare_payload();
     return res;
@@ -457,7 +463,7 @@ Listener::Listener( net::io_context& io_ctx,
     __sessions = std::make_shared<std::vector<std::shared_ptr<https_server::Session>>>();
     __path_to_ssl_certificate = path_to_ssl_certificate;
     __path_to_ssl_key = path_to_ssl_key;
-}
+} 
 void Listener::start(std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station, std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks) {
     __sp_db_marusia_station = sp_db_marusia_station;
     __sp_db_lift_blocks = sp_db_lift_blocks;

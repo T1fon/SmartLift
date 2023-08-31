@@ -106,11 +106,11 @@ void Session::start() {
     _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE), boost::bind(&Session::_reciveCommand, shared_from_this(), _1, _2));
 }
 void Session::stop() {
+    _is_live = false;
+    _ping_timer.cancel();
+    _dead_ping_timer.cancel();
     if (_socket.is_open()) {
-        _is_live = false;
         _socket.close();
-        _ping_timer.cancel();
-        _dead_ping_timer.cancel();
     }
 }
 void Session::_autorization() {
@@ -122,13 +122,6 @@ void Session::_autorization() {
 
         /*��������� ���� �� ����� ������������*/
         string worker_name_id = "Id";
-
-        /*if((*_sp_db_worker_ids)->find("WorkerMId") != (*_sp_db_worker_ids)->end()){
-            worker_name = "WorkerMId";
-        }
-        else {
-            worker_name = "WorkerLuId";
-        }*/
 
         for (auto i = (*_sp_db_worker_ids)->at(worker_name_id).begin(), end = (*_sp_db_worker_ids)->at(worker_name_id).end(); i != end; i++) {
             if (_id == (*i)) {

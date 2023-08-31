@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <queue>
 
 #include "JSONFormatter/JSONFormatter.hpp"
 
@@ -27,11 +28,11 @@ private:
 	std::shared_ptr<net_ip::tcp::socket> __socket;
 	std::shared_ptr<std::shared_ptr<std::map<std::string, std::string>>> __lu_id_descriptor;
 
-	static const int BUF_RECIVE_SIZE = 2048;
+	static const int __BUF_RECIVE_SIZE = 2048;
 	std::string __buf_send;
 	char *__buf_recive;
-	boost::json::value __buf_json_recive;
-	boost::json::stream_parser __parser;
+	std::queue<boost::json::value> __buf_json_recive;
+	boost::json::stream_parser __json_parser;
 	callback_mqtt_worker_t __callback_mqtt_worker;
 	
 	void __requestAuthentication(const boost::system::error_code &error);
