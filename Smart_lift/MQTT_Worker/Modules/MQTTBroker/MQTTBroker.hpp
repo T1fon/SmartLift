@@ -54,22 +54,39 @@ namespace mqtt_broker {
         >
     >;
 
+    class MQTTBrokerSession{
+        private:
+            con_t& __end_point;
+            std::weak_ptr<con_t> __wp;
+            shared_ptr<set<con_sp_t>> __connections;
+            shared_ptr<mi_sub_con> __subs;
+            con_sp_t __worker;
+            con_sp_t __move_worker;
+            string __name;
+            shared_ptr<shared_ptr<map<string, string>>> __sp_db_map_login_password;
+            
+            bool __is_live;
+            inline void __closeProc(std::set<con_sp_t>& cons, mi_sub_con& subs, con_sp_t const& con);
+        public:
+            MQTTBrokerSession(con_sp_t end_point, shared_ptr<set<con_sp_t>> connections, shared_ptr<mi_sub_con> subs);
+            ~MQTTBrokerSession();
 
+            void init(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_login_password);
+            void setName(string name);
+            string getName();
+            void publish(string topic,string message);
+            bool isLive();
+    };
 
 	class MQTTBroker {
 	private:
-        con_sp_t __worker;
         shared_ptr<MQTT_NS::server<>> __server;
         string __port;
         set<con_sp_t> __connections;
         mi_sub_con __subs;
-        std::weak_ptr<con_t> __wp;
-        shared_ptr<shared_ptr<map<string, string>>> __sp_db_map_login_password;
-        vector<string> __lu_blocks_id;
-        using packet_id_t = typename std::remove_reference_t<decltype(*__worker)>::packet_id_t;
-
-        inline void __closeProc(std::set<con_sp_t>& cons, mi_sub_con& subs, con_sp_t const& con);
         
+        shared_ptr<shared_ptr<map<string, string>>> __sp_db_map_login_password;
+        vector<MQTTBrokerSession> __mqtt_sessions;
 	public:
         MQTTBroker();
 		MQTTBroker(shared_ptr<MQTT_NS::server<>> server);
@@ -78,7 +95,6 @@ namespace mqtt_broker {
         void init();
         void start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_login_password);
         void stop();
-        bool searchLiftBlocks(string lu_description);
-        con_sp_t getWorker();
+        bool publish(string lu_description, string topik, string message);
 	};
 }

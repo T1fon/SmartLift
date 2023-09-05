@@ -64,7 +64,7 @@ void Server::__killSession(const boost::system::error_code& error) {
         }
     }
     if (kill) {
-        __kill_timer->expires_from_now(boost::posix_time::seconds(0));
+        __kill_timer->expires_from_now(boost::posix_time::seconds(1));
         __kill_timer->async_wait(boost::bind(&Server::__killSession, shared_from_this(), _1));
     }
     else{
@@ -193,7 +193,12 @@ Session::_CHECK_STATUS Session::_sendCheck(const size_t& count_send_byte, size_t
 void Session::_sendCommand(const boost::system::error_code& error, std::size_t count_send_byte)
 {
     if (error) {
-        cerr << "sendCommand " << error.what() << endl;
+        cerr << "_sendCommand " << error.what() << endl;
+        this->stop();
+        return;
+    }
+
+    if (!_is_live) {
         this->stop();
         return;
     }
@@ -204,10 +209,7 @@ void Session::_sendCommand(const boost::system::error_code& error, std::size_t c
     }
     temp_send_byte = 0;
     _buf_send = "";
-    if (!_is_live) {
-        this->stop();
-        return;
-    }
+    
     if (_next_recive) {
         _next_recive = false;
         _socket.async_receive(boost::asio::buffer(_buf_recive, _BUF_RECIVE_SIZE),
@@ -221,6 +223,8 @@ void Session::_reciveCommand(const boost::system::error_code& error, std::size_t
         this->stop();
         return;
     }
+
+    
 
     if (_reciveCheck(count_recive_byte, boost::bind(&Session::_reciveCommand, shared_from_this(), _1, _2)) == _CHECK_STATUS::FAIL)
     {
@@ -237,15 +241,17 @@ void Session::_ping(const boost::system::error_code& error)
         this->stop();
         return;
     }
-    _buf_send = serialize(json_formatter::worker::request::ping(_sender));
-    _next_recive = true;
-    _ping_success = false;
-    _dead_ping_timer.cancel();
-    _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME*2));
-    _dead_ping_timer.async_wait(boost::bind(&Session::_deadPing, shared_from_this(), _1));
+    if(_is_live){
+        _buf_send = serialize(json_formatter::worker::request::ping(_sender));
+        _next_recive = true;
+        _ping_success = false;
+        _dead_ping_timer.cancel();
+        _dead_ping_timer.expires_from_now(boost::posix_time::seconds(_PING_TIME*2));
+        _dead_ping_timer.async_wait(boost::bind(&Session::_deadPing, shared_from_this(), _1));
 
-    _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
-        boost::bind(&Session::_sendCommand, shared_from_this(), _1, _2));
+        _socket.async_send(boost::asio::buffer(_buf_send, _buf_send.size()),
+            boost::bind(&Session::_sendCommand, shared_from_this(), _1, _2));
+    }
 }
 void Session::_analizePing()
 {
@@ -324,7 +330,7 @@ void SessionMQTT::_commandAnalize() {
     }
 }
 void SessionMQTT::startCommand(COMMAND_CODE_MQTT command_code, void* command_parametr, _callback_t callback) {
-    if (command_code == COMMAND_CODE_MQTT::MOVE_LIFT) {
+    if (command_code == COMMAND_CODE_MQTT::MOVE_LIFT && _is_live) {
         _callback = callback;
         move_lift_t* parametr = (move_lift_t*)command_parametr;
         _buf_send = serialize(json_formatter::worker::request::mqtt_move(_sender, parametr->station_id, parametr->lift_block_id, parametr->floor));
@@ -373,7 +379,7 @@ void SessionMarusia::_commandAnalize()
 }
 void SessionMarusia::startCommand(COMMAND_CODE_MARUSIA command_code, void* command_parametr, _callback_t callback)
 {
-    if (command_code == MARUSIA_STATION_REQUEST) {
+    if (command_code == MARUSIA_STATION_REQUEST && _is_live) {
         _callback = callback;
         marussia_station_request_t* parametr = (marussia_station_request_t*)command_parametr;
         _buf_send = serialize(json_formatter::worker::request::marussia_request(_sender, parametr->station_id, parametr->body));

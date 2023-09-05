@@ -44,7 +44,7 @@ int MQTTWorker::init() {
     __sp_db_map_lb_descriptor = make_shared<map<string,string>>();
     __sp_db_map_login_password = make_shared<map<string, string>>();
 
-    MQTT_NS::setup_log();
+    MQTT_NS::setup_log("/home/SmartLift/MQTT_Worker/MQTT.log");
     __io_ctx = make_shared<boost::asio::io_context>(__count_threads);
 
     __mqtt_server = make_shared<MQTT_NS::server<>>(
@@ -90,17 +90,14 @@ void MQTTWorker::stop() {
 }
 
 void MQTTWorker::moveLift(string lu_description, string floor_number, string station_id) {
-    __mqtt_worker = __mqtt_broker->getWorker();
     string temp_lu_descriptor = lu_description.substr(1, lu_description.size()-2);
-    //cout << "Floor Number: " << floor_number << " " <<floor_number.substr(1, floor_number.size()-1) <<endl;
-    if(__mqtt_broker->searchLiftBlocks(temp_lu_descriptor)){
-        cout << "LU" + lu_description.substr(1, lu_description.size() - 2) +"/set/cmd" << "{\"cmdlft\":[1," + floor_number + string("]}") << endl;
-        __mqtt_worker->async_publish("LU" + lu_description.substr(1, lu_description.size() - 2) +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}");
+    if(__mqtt_broker->publish(temp_lu_descriptor, "LU" + temp_lu_descriptor +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}")){
+        cout << "Publish: Success " << lu_description << " " << floor_number << endl;
         __ms_worker->responseMove(station_id, true);
     }
     else{
         __ms_worker->responseMove(station_id, false);
-        cout << "LU not found: " << temp_lu_descriptor << endl;
+        cout << "Publish: LU not found: " << temp_lu_descriptor << endl;
     }    
 }
 void MQTTWorker::__loadDataBase() {

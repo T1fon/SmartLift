@@ -62,6 +62,9 @@ namespace https_server {
 
         std::string __path_to_ssl_certificate;
         std::string __path_to_ssl_key;
+
+        const int __RECONNECT_MAX = 3;
+        int __reconnect_count = 0;
     public:
         explicit Session(tcp::socket&& socket,
             ssl::context& ssl_ctx,
@@ -71,6 +74,7 @@ namespace https_server {
             std::shared_ptr<std::vector<std::shared_ptr<worker_server::Session>>> sessions_marussia,
             std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_marusia_station, 
             std::shared_ptr< shared_ptr<map<string, vector<string>>>> sp_db_lift_blocks);
+        ~Session();
         void run();
         bool isLive();
     private:
@@ -97,7 +101,7 @@ namespace https_server {
 
     class Listener : public std::enable_shared_from_this<Listener>
     {
-        const int __TIME_DEAD_SESSION = 30;
+        const int __TIME_DEAD_SESSION = 5;
         net::io_context& __io_ctx;
         ssl::context& __ssl_ctx;
         std::shared_ptr<tcp::acceptor> __acceptor;

@@ -25,13 +25,21 @@ Session::Session(tcp::socket&& socket,
     __sessions_mqtt = sessions_mqtt;
     __path_to_ssl_certificate = path_to_ssl_certificate;
     __path_to_ssl_key = path_to_ssl_key;
+    __is_live = false;
+    __reconnect_count = 0;
+}
+Session::~Session(){
+    cout << "KILL HTTPS SESSION" << endl;
 }
 
 void Session::run() {
+
+    cout << "METHOD RUN" << endl;
     net::dispatch( __stream.get_executor(), 
                     beast::bind_front_handler( &Session::__onRun, shared_from_this() ));
 }
 void Session::__onRun() {
+    cout << "METHOD OnRUN" << endl;
     // Set the timeout.
     beast::get_lowest_layer(__stream).expires_after(std::chrono::seconds(30));
     // Perform the SSL handshake
@@ -40,17 +48,24 @@ void Session::__onRun() {
 }
 void Session::__onHandshake(beast::error_code ec) {
     /*тут нужно добавить перечтение ssl сертификата*/
+    cout << "METHOD Handshake" << endl;
     if (ec) { 
+
         if(load_server_certificate(__ssl_ctx,__path_to_ssl_certificate, __path_to_ssl_key) == -1){
-            return fail(ec, "handshake"); 
+            return fail(ec, "Load Sertificate error"); 
         }
-        this->run();
+        if(__reconnect_count < __RECONNECT_MAX){
+            __reconnect_count++;
+            this->run();
+        }
+        
         return;
     }
     __is_live = true;
     __doRead();
 }
 void Session::__doRead() {
+    cout << "METHOD doRead" << endl;
     __req = {};
 
     // Set the timeout.
@@ -62,6 +77,7 @@ void Session::__doRead() {
 }
 void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred) 
 {
+    cout << "METHOD onRead" << endl;
     boost::ignore_unused(bytes_transferred);
 
     // This means they closed the connection
@@ -69,6 +85,7 @@ void Session::__onRead(beast::error_code ec, std::size_t bytes_transferred)
 
     if (ec) 
     { //return fail(ec, "read");
+        __is_live = false;
         return;
     }
 
@@ -96,8 +113,10 @@ void Session::__onWrite(bool keep_alive, beast::error_code ec, std::size_t bytes
         return __doClose();
     }
 
+    //изменения
+    __is_live = false;
     // Read another request
-    __doRead();
+    //__doRead();
 }
 void Session::__doClose() {
     __is_live = false;
@@ -482,7 +501,7 @@ void Listener::__killSession(beast::error_code ec) {
         }
     }
     if (kill) {
-        __timer_kill->expires_from_now(boost::posix_time::seconds(0));
+        __timer_kill->expires_from_now(boost::posix_time::seconds(1));
         __timer_kill->async_wait(beast::bind_front_handler(&Listener::__killSession, shared_from_this()));
     }
     else {
@@ -507,6 +526,13 @@ void Listener::__onAccept(beast::error_code ec, tcp::socket socket) {
                                 __sessions_mqtt, __sessions_marussia, 
                                 __sp_db_marusia_station, __sp_db_lift_blocks));
         __sessions->back()->run();
+       /* std::make_shared<https_server::Session>(
+                                std::move(socket),
+                                __ssl_ctx,
+                                __path_to_ssl_certificate,
+                                __path_to_ssl_key,
+                                __sessions_mqtt, __sessions_marussia, 
+                                __sp_db_marusia_station, __sp_db_lift_blocks)->run();*/
     }
 
     // Accept another connection

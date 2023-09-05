@@ -10,13 +10,11 @@
 class MQTTWorker: public std::enable_shared_from_this<MQTTWorker> {
 	
 private:
-	const int __TIME_UPDATE = 100;
+	const int __TIME_UPDATE = 10;
 	std::shared_ptr<boost::asio::io_context> __io_ctx;
 	std::shared_ptr<MQTT_NS::server<>> __mqtt_server;
 	std::shared_ptr<mqtt_broker::MQTTBroker> __mqtt_broker;
 	std::shared_ptr<MSWorker> __ms_worker;
-	//shared_ptr<mqtt_broker::con_sp_t> __mqtt_worker;
-	mqtt_broker::con_sp_t __mqtt_worker;
 	std::vector<std::thread> __v;
 	vector<string> __lu_ids = {};
 
