@@ -109,9 +109,17 @@ void Session::stop() {
     _is_live = false;
     _ping_timer.cancel();
     _dead_ping_timer.cancel();
-    if (_socket.is_open()) {
-        _socket.close();
+    try{
+        _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send);
+        _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+        if (_socket.is_open()) {
+            _socket.close();
+        }
     }
+    catch(exception &e){
+        cerr << "stop operation Worker server" << endl;
+    }
+    
 }
 void Session::_autorization() {
     boost::json::value analize_value = _buf_json_recive.front();

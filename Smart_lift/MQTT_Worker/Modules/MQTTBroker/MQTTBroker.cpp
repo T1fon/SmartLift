@@ -67,11 +67,11 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
         bool clean_session,
         std::uint16_t keep_alive) {
             using namespace MQTT_NS::literals;
-            std::cout << "[server] client_id    : " << client_id << std::endl;
-            std::cout << "[server] username     : " << (username ? username.value() : "none"_mb) << std::endl;
-            std::cout << "[server] password     : " << (password ? password.value() : "none"_mb) << std::endl;
-            std::cout << "[server] clean_session: " << std::boolalpha << clean_session << std::endl;
-            std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
+            //std::cout << "[server] client_id    : " << client_id << std::endl;
+            //std::cout << "[server] username     : " << (username ? username.value() : "none"_mb) << std::endl;
+            //std::cout << "[server] password     : " << (password ? password.value() : "none"_mb) << std::endl;
+            //std::cout << "[server] clean_session: " << std::boolalpha << clean_session << std::endl;
+            //std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
             try {
                 (*__sp_db_map_login_password)->at("\"" + username->to_string() + "\"");
                 string temp_client_id = client_id.data();
@@ -140,27 +140,15 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
         MQTT_NS::buffer topic_name,
         MQTT_NS::buffer contents) {
             std::cout << "PUBLISH START" << std::endl;
-            std::cout << "[server] publish received."
-                << " dup: " << pubopts.get_dup()
-                << " qos: " << pubopts.get_qos()
-                << " retain: " << pubopts.get_retain() << std::endl;
-            if (packet_id)
-                std::cout << "[server] packet_id: " << *packet_id << std::endl;
-            std::cout << "[server] topic_name: " << topic_name << std::endl;
-            std::cout << "[server] contents: " << contents << std::endl;
-            auto const& idx = __subs->get<tag_topic>();
-            std::cout << "Check_point COMMENT" << std::endl;
+            ///////////////////////////std::cout << "[server] publish received."
+                //<< " dup: " << pubopts.get_dup()
+                //<< " qos: " << pubopts.get_qos()
+                //<< " retain: " << pubopts.get_retain() << std::endl;
+            //if (packet_id)
+                //std::cout << "[server] packet_id: " << *packet_id << std::endl;
+            //std::cout << "[server] topic_name: " << topic_name << std::endl;
+            //std::cout << "[server] contents: " << contents << std::endl;
             
-            /*auto r = idx.equal_range(topic_name);
-            std::cout << "Check_point 2" << std::endl;
-            for (; r.first != r.second; ++r.first) {
-                std::cout << "Check_point 3" << std::endl;
-                r.first->con->publish(
-                    topic_name,
-                    contents,
-                    std::min(r.first->qos_value, pubopts.get_qos())
-                );
-            }*/
             std::cout << "PUBLISH END" << std::endl;
             return true;
         });
@@ -168,13 +156,13 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
         [this]
     (packet_id_t packet_id,
         std::vector<MQTT_NS::subscribe_entry> entries) {
-            std::cout << "[server] subscribe received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] subscribe received. packet_id: " << packet_id << std::endl;
             std::vector<MQTT_NS::suback_return_code> res;
             res.reserve(entries.size());
             auto sp = __wp.lock();
             BOOST_ASSERT(sp);
             for (auto const& e : entries) {
-                std::cout << "[server] topic_filter: " << e.topic_filter << " qos: " << e.subopts.get_qos() << std::endl;
+              //  std::cout << "[server] topic_filter: " << e.topic_filter << " qos: " << e.subopts.get_qos() << std::endl;
                 res.emplace_back(MQTT_NS::qos_to_suback_return_code(e.subopts.get_qos()));
                 __subs->emplace(std::move(e.topic_filter), sp, e.subopts.get_qos());
             }
@@ -186,7 +174,7 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
         [this]
     (packet_id_t packet_id,
         std::vector<MQTT_NS::unsubscribe_entry> entries) {
-            std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
             auto sp = __wp.lock();
             for (auto const& e : entries) {
                 auto it = __subs->find(std::make_tuple(sp, e.topic_filter));
@@ -201,7 +189,7 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
     );
     __end_point.set_pingresp_handler([]()
         {
-            std::cout << "[server] pingresp" << std::endl;
+            //std::cout << "[server] pingresp" << std::endl;
             return true;
         });
 }

@@ -22,9 +22,16 @@ void MSWorker::start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::
 	__socket->async_connect(*__end_point, boost::bind(&MSWorker::__requestAuthentication, shared_from_this(), _1));
 }
 void MSWorker::stop() {
-	if (__socket->is_open()) {
-		__socket->close();
-	}
+	try{
+        __socket->shutdown(boost::asio::ip::tcp::socket::shutdown_send);
+        __socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+        if (__socket->is_open()) {
+            __socket->close();
+        }
+    }
+    catch(exception &e){
+        cerr << "stop operation Worker server" << endl;
+    }
 }
 void MSWorker::__requestAuthentication(const boost::system::error_code& error){
 	if (error) {

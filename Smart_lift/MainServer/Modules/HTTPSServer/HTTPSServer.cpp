@@ -29,6 +29,11 @@ Session::Session(tcp::socket&& socket,
     __reconnect_count = 0;
 }
 Session::~Session(){
+    try{
+        __stream.shutdown();
+    }catch(exception &e){
+        cerr << "Shutdown error" << endl;
+    }
     cout << "KILL HTTPS SESSION" << endl;
 }
 
@@ -57,6 +62,9 @@ void Session::__onHandshake(beast::error_code ec) {
         if(__reconnect_count < __RECONNECT_MAX){
             __reconnect_count++;
             this->run();
+        }
+        else{
+            __is_live = false;
         }
         
         return;
@@ -103,7 +111,10 @@ void Session::__sendResponse(http::message_generator&& msg) {
 void Session::__onWrite(bool keep_alive, beast::error_code ec, std::size_t bytes_transferred) {
     boost::ignore_unused(bytes_transferred);
 
-    if (ec) { return fail(ec, "write"); }
+    if (ec) { 
+        __is_live = false;
+        return fail(ec, "write");
+    }
         
 
     if (!keep_alive)
@@ -130,8 +141,8 @@ void Session::__doClose() {
             shared_from_this()));
 }
 void Session::__onShutdown(beast::error_code ec) {
-    if (ec) { return fail(ec, "shutdown"); }
     __is_live = false;
+    if (ec) { return fail(ec, "shutdown"); }
     // At this point the connection is closed gracefully
 }
 bool Session::isLive() {
