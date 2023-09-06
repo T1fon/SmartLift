@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
+#include <typeinfo>
 #include <memory>
 #include <string>
 #include <thread>
@@ -55,6 +56,7 @@ private:
 	map<string, vector<string>> __answer;
 	bool __flag_wrong_connect = false;
 	bool __flag_send = false;
+	bool __flag_exit = false;
 	boost::json::value __json_string;
 
 	void __reqAutentification()
@@ -448,6 +450,7 @@ private:
 			}
 			else
 			{
+				sqlite3_close(__dB);
 				try
 				{
 					vector<string> __login = __answer.at("Login");
@@ -550,17 +553,32 @@ public:
 	}
 	void stop()
 	{
-		if (__socket->is_open())
+		try
 		{
-			__socket->close();
+			__socket->shutdown(tcp::socket::shutdown_send);
+			__socket->shutdown(tcp::socket::shutdown_receive);
+			if (__socket->is_open())
+			{
+				__socket->close();
+			}
+			__log->writeLog(0, "DataBase", "End_Connect");
+			__log->writeTempLog(0, "DataBase", "End_Connect");
+			__flag_exit = true;
 		}
-		__log->writeLog(0, "DataBase", "End_Connect");
-		__log->writeTempLog(0, "DataBase", "End_Connect");
+		catch(exception &e)
+		{
+			cerr << "stop operation DB " << e.what() << endl;
+		}
 	}
 	~DataBase()
 	{
 		this->stop();
 		delete[] __buf_recieve;
+	}
+	
+	bool getFlagExit()
+	{
+		return __flag_exit;
 	}
 };
 
@@ -576,16 +594,19 @@ public:
 		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
+		__timer = make_shared<net::deadline_timer>(__ioc);
 
 	}
 	void run()
 	{
+		__timer->expires_from_now(boost::posix_time::hours(24));
+		__timer->async_wait(boost::bind(&Server::__resetTimer, shared_from_this()));
 		__doAccept();
 	}
 	void stop()
 	{
-		for (size_t i = 0, length = __sessions->size(); i < length; i++) {
-			__sessions->back()->stop();
+		for (auto i = __sessions->begin(), end = __sessions->end(); i != end; i++) {
+			(*i)->stop();
 		}
 		__sessions->clear();
 	}
@@ -599,6 +620,7 @@ private:
 	shared_ptr<tcp::acceptor> __acceptor;
 	shared_ptr<net::io_context> __ioc;
 	std::shared_ptr<std::vector<std::shared_ptr<DataBase>>> __sessions;
+	shared_ptr<net::deadline_timer> __timer;
 
 	void __doAccept()
 	{
@@ -617,5 +639,18 @@ private:
 				__doAccept();
 			}
 		);
+	}
+
+	void __resetTimer()
+	{
+		for (auto i = __sessions->begin(), end = __sessions->end(); i != end; i++)
+		{
+			if ((*i)->getFlagExit() == true)
+			{
+				__sessions->erase(i);
+			}
+		}
+		__timer->expires_from_now(boost::posix_time::seconds(5));
+		__timer->async_wait(boost::bind(&Server::__resetTimer, shared_from_this()));
 	}
 };

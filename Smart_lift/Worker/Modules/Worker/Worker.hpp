@@ -98,9 +98,20 @@ public:
 	}
 	void stop()
 	{
-		if (__socket->is_open())
+		try
 		{
-			__socket->close();
+			__socket->shutdown(tcp::socket::shutdown_send);
+			__socket->shutdown(tcp::socket::shutdown_receive);
+			if (__socket->is_open())
+			{
+				__socket->close();
+			}
+			__log->writeLog(0, "WorkerMS", "End_Connect");
+			__log->writeTempLog(0, "WorkerMs", "End_Connect");
+		}
+		catch (exception& e)
+		{
+			cerr << "worker Marussia " << e.what() << endl;
 		}
 	}
 
