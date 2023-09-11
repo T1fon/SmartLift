@@ -515,7 +515,7 @@ private:
 					cerr << search_mqtt[j] << " my" << buf_key << endl;
 					if (search_mqtt[j].find(buf_key) != search_mqtt[j].npos)
 					{
-						bufNum += search_mqtt[j];
+						bufNum = search_mqtt[j];
 					}
 				}
 			}
