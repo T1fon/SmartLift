@@ -63,9 +63,18 @@ public:
 	}
 	void stop()
 	{
-		if (__socket->is_open())
+		try
 		{
-			__socket->close();
+			__socket->shutdown(tcp::socket::shutdown_send);
+			__socket->shutdown(tcp::socket::shutdown_receive);
+			if (__socket->is_open())
+			{
+				__socket->close();
+			}
+		}
+		catch (exception& e)
+		{
+			cerr << "stop operation DB " << e.what() << endl;
 		}
 	}
 	void setQuerys(queue<string> queue_tables, queue<vector<string>> queue_fields, queue<string> queue_conditions )

@@ -19,3 +19,6 @@ add_subdirectory("Smart_lift/Worker")
 
 project("DataBase")
 add_subdirectory("Smart_lift/DataBase")
+
+project("Resurrector")
+add_subdirectory("Smart_lift/Resurrector")

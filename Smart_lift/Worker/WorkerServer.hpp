@@ -6,7 +6,7 @@
 class ServerWorker : public enable_shared_from_this<ServerWorker>
 {
 public:
-	ServerWorker(string name_conf_file)
+	ServerWorker(string way_conf_file, string name_conf_file)
 	{
 		__log_server = make_shared<Log>("Log/", "./", "Marussia_Worker");
 		if (name_conf_file == "")
@@ -17,8 +17,7 @@ public:
 		{
 			name_config = name_conf_file;
 		}
-		__ioc = make_shared<boost::asio::io_context>(__count_threads);
-		__config = make_shared<Config>(__log_server, "./", "", name_config);
+		__config = make_shared<Config>(__log_server, "./", way_conf_file, name_config);
 		__config->readConfig();
 		__config_info = __config->getConfigInfo();
 	}
@@ -54,7 +53,7 @@ public:
 		{
 			cerr << e.what() << endl;
 		}
-
+		__ioc = make_shared<boost::asio::io_context>(__count_threads);
 		__session = make_shared<Worker>(__config_info, *__ioc, __log_server);
 		__session->start();
 		std::vector<std::thread> v;

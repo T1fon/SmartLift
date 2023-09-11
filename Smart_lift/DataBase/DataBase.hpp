@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Modules/Server/DataBaseServer.hpp"
+#define DEFINE_CONFIG "config.txt"
 
 class ServerDataBase: public enable_shared_from_this<ServerDataBase>
 {
@@ -10,15 +11,23 @@ private:
 	shared_ptr<Server> __server;
 	shared_ptr<Config> __config;
 	shared_ptr<Log> __log_server;
+	string __name_config;
 	map<string, string> __config_info;
 	static const int CONFIG_NUM_FIELDS = 2;
 	vector<string> CONFIG_FIELDS = { "Port", "Count_threads"};
 public:
-	ServerDataBase()
+	ServerDataBase(string config_way, string name_conf)
 	{
-		__ioc = make_shared<boost::asio::io_context>(__countThreads);
+		if (config_way == "")
+		{
+			__name_config = DEFINE_CONFIG;
+		}
+		else
+		{
+			__name_config = name_conf;
+		}
 		__log_server = make_shared<Log>("Log/", "./", "DataBase");
-		__config = make_shared<Config>(__log_server, "./", "", "");
+		__config = make_shared<Config>(__log_server, "./", config_way, __name_config);
 		__config->readConfig();
 	}
 	~ServerDataBase()
@@ -51,6 +60,7 @@ public:
 		}
 		__server = make_shared<Server>(__ioc, "", __log_server, __config_info);
 		__countThreads = stoi(__config_info.at("Count_threads"));
+		__ioc = make_shared<boost::asio::io_context>(__countThreads);
 		__server->run();
 
 		std::vector<std::thread> v;
