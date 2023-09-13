@@ -5,7 +5,7 @@
 # �������� �������� � ����������� ���� ����� �������.
 
 if(UNIX)
-	set(BOOST_ROOT "/home/tifon/boost_1_83_0")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 else() 
@@ -27,7 +27,7 @@ set(Boost_USE_DYNAMIC_LIBS        OFF)
 
 set(MOD_CONFIG "${GLOBAL_MODULES}/Config/Config.cpp" "${GLOBAL_MODULES}/Config/Config.hpp")
 set(MOD_LOG "${GLOBAL_MODULES}/Log/Log.cpp" "${GLOBAL_MODULES}/Log/Log.hpp")
-set(SOURCE_MODULES ${MOD_CONFIG} ${MOD_LOG})
+set(SOURCE_MODULES${MOD_CONFIG} ${MOD_LOG} )
 add_executable (Resurrector "Resurrector.cpp" "Resurrector.hpp" ${SOURCE_MODULES})
 
 find_package(Boost REQUIRED)

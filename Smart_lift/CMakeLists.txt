@@ -8,7 +8,7 @@ set(MODULES "Modules")
 if(UNIX)
 	#set(BOOST_PATH "")
 
-	set(BOOST_ROOT "/home/SmartLift/boost_1_83_0")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 

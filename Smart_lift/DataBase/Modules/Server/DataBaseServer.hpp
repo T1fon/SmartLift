@@ -594,7 +594,7 @@ public:
 		string port = __config_info.at("Port");
 		cerr << port << endl;
 		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
-		__timer = make_shared<net::deadline_timer>(*__ioc);
+		__timer = make_shared<net::deadline_timer>(__ioc);
 
 	}
 	void run()
