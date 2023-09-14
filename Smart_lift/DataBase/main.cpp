@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
         {
             config_file_name = argv[++i];
         }
-
+    }
 	ServerDataBase sDB(config_file_way, config_file_name);
 	sDB.start();
 }

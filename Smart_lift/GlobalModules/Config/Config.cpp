@@ -3,6 +3,7 @@
 
 Config::Config(shared_ptr<Log> lg, string root_directory, string way, string file_name)
 {
+	cerr << "HI" << endl;
 	if (file_name == "") {
 		__file_name = CONFIG_FILE;
 	}
@@ -19,6 +20,7 @@ Config::Config(shared_ptr<Log> lg, string root_directory, string way, string fil
 		__file_name = CONFIG_FILE;
 	}
 	__final_path = __root_directory + __way +  __file_name;
+	cerr << "final " << __final_path << endl;
 	ifstream fin(__final_path);
 	if (!fin.is_open())
 	{

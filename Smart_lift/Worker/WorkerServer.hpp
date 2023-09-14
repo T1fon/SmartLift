@@ -9,6 +9,7 @@ public:
 	ServerWorker(string way_conf_file, string name_conf_file)
 	{
 		__log_server = make_shared<Log>("Log/", "./", "Marussia_Worker");
+		string way = "";
 		if (name_conf_file == "")
 		{
 			name_config = DEFINE_CONFIG;
@@ -17,7 +18,12 @@ public:
 		{
 			name_config = name_conf_file;
 		}
-		__config = make_shared<Config>(__log_server, "./", way_conf_file, name_config);
+		if (way_conf_file != "")
+		{
+			way = way_conf_file;
+		}
+		cerr << way << endl;
+		__config = make_shared<Config>(__log_server, "./", way, name_config);
 		__config->readConfig();
 		__config_info = __config->getConfigInfo();
 	}
@@ -35,8 +41,9 @@ public:
 		}
 		try
 		{
-			for (size_t i = 0, length = __config_info.size(); i < length; i++)
+			for (size_t i = 0, length = __config_info.size() - 1; i < length; i++)
 			{
+				cerr << CONFIG_FIELDS.at(i) << endl;
 				__config_info.at(CONFIG_FIELDS.at(i));
 			}
 		}

@@ -18,7 +18,8 @@ private:
 public:
 	ServerDataBase(string config_way, string name_conf)
 	{
-		if (config_way == "")
+		string way = "";
+		if (name_conf == "")
 		{
 			__name_config = DEFINE_CONFIG;
 		}
@@ -26,8 +27,12 @@ public:
 		{
 			__name_config = name_conf;
 		}
+		if (config_way != "")
+		{
+			way = config_way;
+		}
 		__log_server = make_shared<Log>("Log/", "./", "DataBase");
-		__config = make_shared<Config>(__log_server, "./", config_way, __name_config);
+		__config = make_shared<Config>(__log_server, "./", way, __name_config);
 		__config->readConfig();
 	}
 	~ServerDataBase()
@@ -48,19 +53,25 @@ public:
 		}
 		try
 		{
-			for (size_t i = 0, length = __config_info.size(); i < length; i++)
+			for (size_t i = 0, length = __config_info.size() - 1; i < length; i++)
 			{
 				__config_info.at(CONFIG_FIELDS.at(i));
+				cerr << CONFIG_FIELDS.at(i) << " " << __config_info.at(CONFIG_FIELDS.at(i)) << endl;
 			}
 		}
 		catch (exception& e)
 		{
+			cerr << "error" << endl;
 			__log_server->writeLog(1, "DataBase", e.what());
 			return;
 		}
-		__server = make_shared<Server>(__ioc, "", __log_server, __config_info);
+		cerr << "0" << endl;
 		__countThreads = stoi(__config_info.at("Count_threads"));
+		cerr << "1" << endl;
 		__ioc = make_shared<boost::asio::io_context>(__countThreads);
+		cerr << "2" << endl;
+		__server = make_shared<Server>(__ioc, "", __log_server, __config_info);
+		cerr << "3" << endl;
 		__server->run();
 
 		std::vector<std::thread> v;

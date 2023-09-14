@@ -41,7 +41,7 @@ private:
 	bool __flag_main_server;
 	bool __flag_mqtt_worker;
 	vector<string> CONFIG_FIELDS = { "Time_check", "Time_reset", "ServerDB", "MainServer", "Worker", "MQTT_Worker", "Count_threads"};
-	vector<string> __fields = { "ServerDB", "MainServer", "Worker", "MQTT_Worker"};
+	vector<string> __fields = {"Worker"};
 
 	void __checkWorking();
 	void __resetProgramms();

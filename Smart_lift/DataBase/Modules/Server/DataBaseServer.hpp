@@ -591,10 +591,14 @@ public:
 		__sessions = make_shared<std::vector<std::shared_ptr<DataBase>>>();
 		__log_server = log_server;
 		__config_info = config_info;
+		cerr << "hi" << endl;
 		string port = __config_info.at("Port");
-		cerr << port << endl;
-		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), stoi(port)));
-		__timer = make_shared<net::deadline_timer>(__ioc);
+		int port_go = stoi(port);
+		cerr << "port_go " << port_go << endl;
+		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), port_go));
+		cerr << "here" << endl;
+		__timer = make_shared<net::deadline_timer>(*__ioc);
+		cerr << "or here" << endl;
 
 	}
 	void run()
