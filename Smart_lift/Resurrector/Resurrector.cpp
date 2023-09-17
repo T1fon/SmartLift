@@ -51,17 +51,13 @@ void Resurrector::start()
 	{
 		cerr << "Resurrector not read timers or threads " << e.what() << endl;
 	}
-	cerr << 100 << endl;
 	__ioc = make_shared<boost::asio::io_context>(__count_threads);
 	__timer_check = make_shared<net::deadline_timer>(*__ioc);
 	__timer_reset = make_shared<net::deadline_timer>(*__ioc);
-	cerr << 1 << endl;
 	__timer_check->expires_from_now(boost::posix_time::seconds(__time_check_s));
-	cerr << 101 << endl;
 	__timer_reset->expires_from_now(boost::posix_time::hours(__time_reset_h));
 	__timer_check->async_wait(boost::bind(&Resurrector::__resetTimerCheck, this));
 	__timer_reset->async_wait(boost::bind(&Resurrector::__resetTimerReset, this));
-	cerr << 2 << endl;
 	vector<std::thread> v;
 	v.reserve(__count_threads - 1);
 	for (auto i = __count_threads - 1; i > 0; --i)
@@ -75,28 +71,24 @@ void Resurrector::start()
 
 void Resurrector::__resetTimerCheck()
 {
-	cerr << 3 << endl;
 	__checkWorking();
 	__timer_check->expires_from_now(boost::posix_time::seconds(__time_check_s));
-	__timer_check->async_wait(boost::bind(&Resurrector::__resetTimerCheck, shared_from_this()));
+	__timer_check->async_wait(boost::bind(&Resurrector::__resetTimerCheck, this));
 }
 
 void Resurrector::__resetTimerReset()
 {
-	cerr << 4 << endl;
 	__resetProgramms();
 	__timer_reset->expires_from_now(boost::posix_time::hours(__time_reset_h));
-	__timer_reset->async_wait(boost::bind(&Resurrector::__resetTimerReset, shared_from_this()));
+	__timer_reset->async_wait(boost::bind(&Resurrector::__resetTimerReset, this));
 }
 
 void Resurrector::__checkWorking()
 {
-	cerr << 5 << endl;
 	__dir_entity = NULL;
 	__dir_proc = NULL;
 
 	__dir_proc = opendir(PROC_DIRECTORY);
-	cerr << 6 << endl;
 	if (__dir_proc == NULL)
 	{
 		cerr << "Not open " <<  PROC_DIRECTORY << endl;
@@ -104,58 +96,44 @@ void Resurrector::__checkWorking()
 	}
 	while ((__dir_entity = readdir(__dir_proc)) != NULL)
 	{
-		cerr << 6.1 << endl;
 		if (!isdigit(*__dir_entity->d_name))
 		{
 			continue;
 		}
-		cerr << 6.2 << endl;
-		cerr << __dir_entity->d_name << endl;
 		string pid, name;
 		char arg1[30];
-		sprintf(arg1, "/proc/%d/stat", __dir_entity->d_name);
+		fill_n(arg1, 30, 0);
+		sprintf(arg1, "/proc/%d/stat", stoi(__dir_entity->d_name));
 		ifstream stat_stream(arg1, ios_base::in);
 		stat_stream >> pid >> name;
-		cerr << pid << " " << name << endl;
-		cerr << 6.3 << endl;
-		if (name == "Worker")
+
+		if (name == "(Worker)")
 		{
-			__flag_worker = true;
+			__worker_count ++;
+			cerr << "Worker " << pid;
 		}
-		else if (name == "ServerDB")
+		else if (name == "(ServerDB)")
 		{
-			__flag_db = true;
+			__db_count ++;
+			cerr  << "DB "<< pid;
 		}
-		else if (name == "MainServer")
+		else if (name == "(MainServer)")
 		{
-			__flag_main_server = true;
+			__ms_count ++;
+			cerr  << "MainServer " << pid;
 		}
-		else if (name == "MQTT_Worker")
+		else if (name == "(MQTT_Worker)")
 		{
-			__flag_mqtt_worker = true;
+			__mqtt_count ++;
+			cerr  << "MQTT " << pid << endl;
 		}
 	}
 	closedir(__dir_proc);
-	cerr << 7 << endl;
-	if (__flag_worker == false)
+	if (__db_count == 0)
 	{
 		try
 		{
-			string boofWay = __config_info.at("Worker");
-			string way = " nohup ./" + boofWay + "Worker -cf "+ boofWay + " &";
-			cerr << "way" << way << endl;
-			const char* order = way.c_str();
-			system(order);
-		}
-		catch (exception& e)
-		{
-			cerr << "open Worker " << e.what() << endl;
-		}
-	}
-	else if (__flag_db == false)
-	{
-		try
-		{
+			cerr << "DB" << endl;
 			string boofWay = __config_info.at("ServerDB");
 			string way = " nohup ./" + boofWay + "ServerDB -cf "+ boofWay + " &";
 			const char* order = way.c_str();
@@ -166,10 +144,12 @@ void Resurrector::__checkWorking()
 			cerr << "open ServerDB " << e.what() << endl;
 		}
 	}
-	else if (__flag_main_server == false)
+
+	if (__ms_count == 0)
 	{
 		try
 		{
+			cerr << "MainServer" << endl;
 			string boofWay = __config_info.at("MainServer");
 			string way = " nohup ./" + boofWay + "MainServer -cf "+ boofWay + " &";
 			const char* order = way.c_str();
@@ -177,29 +157,49 @@ void Resurrector::__checkWorking()
 		}
 		catch (exception& e)
 		{
-			cerr << "open ServerDB " << e.what() << endl;
+			cerr << "open MainSerwer " << e.what() << endl;
 		}
 	}
-	else if (__flag_main_server == false)
+
+	if (__worker_count == 0)
 	{
 		try
 		{
-			string boofWay = __config_info.at("MQTT_Worker");
-			string way = " nohup ./" + boofWay + "MQTT_Worker -cf " + boofWay +" &";
+			cerr << "Worker" << endl;
+			string boofWay = __config_info.at("Worker");
+			string way = " nohup ./" + boofWay + "Worker -cf "+ boofWay + " &";
 			const char* order = way.c_str();
 			system(order);
 		}
 		catch (exception& e)
 		{
-			cerr << "open ServerDB " << e.what() << endl;
+			cerr << "open Worker " << e.what() << endl;
 		}
 	}
-	cerr << 8 << endl;
+	if (__mqtt_count == 0)
+	{
+		try
+		{
+			cerr << "MQTT" << endl;
+			string boofWay = __config_info.at("MQTT_Worker");
+			string way = " nohup ./" + boofWay + "MQTT_Worker -cf " + boofWay +" &";
+			cerr << way << endl;
+			const char* order = way.c_str();
+			system(order);
+		}
+		catch (exception& e)
+		{
+			cerr << "open MQTT " << e.what() << endl;
+		}
+	}
+	__worker_count = 0;
+	__ms_count = 0;
+	__db_count = 0;
+	__mqtt_count = 0;
 }
 
 void Resurrector::__resetProgramms()
 {
-	cerr << 9 << endl;
 	__dir_entity = NULL;
 	__dir_proc = NULL;
 
@@ -209,7 +209,6 @@ void Resurrector::__resetProgramms()
 		cerr << "Not open " <<  PROC_DIRECTORY << endl;
 		return;
 	}
-	cerr << 10 << endl;
 	while ((__dir_entity = readdir(__dir_proc)) != NULL)
 	{
 				if (!isdigit(*__dir_entity->d_name))
@@ -217,37 +216,86 @@ void Resurrector::__resetProgramms()
 			continue;
 		}
 		errno = 0;
-		cerr << __dir_entity->d_name << endl;
 		string pidd, name;
-		char arg1[20];
-		sprintf(arg1, "/proc/%d/stat", __dir_entity->d_name);
+		char arg1[30];
+		fill_n(arg1, 30, 0);
+		sprintf(arg1, "/proc/%d/stat", stoi(__dir_entity->d_name));
 		ifstream stat_stream(arg1, ios_base::in);
 		stat_stream >> pidd >> name;
-		cerr << pidd << " " << name << endl;
-		for(size_t i = 0; i < __fields.size(); i++)
+		if(name == "(Worker)")
 		{
-			if(name == __fields[i])
+			pid_t pid = stoi(pidd);
+			int  killReturn = kill(pid, SIGKILL);
+			if (killReturn == -1)
 			{
-				pid_t pid = stoi(pidd);
-				int  killReturn = kill(pid, SIGKILL);
-				if (killReturn == -1)
+				if (errno == ESRCH)      // pid does not exist
 				{
-					if (errno == ESRCH)      // pid does not exist
-					{
-						cerr << "Group does not exist!" << endl;
-					}
-					else if (errno == EPERM) // No permission to send signal
-					{
-						cerr << "No permission to send signal!" << endl;
-					}
-					else
-						cerr << "Signal sent. All Ok!" << endl;
+					cerr << "Group does not exist!" << endl;
 				}
+				else if (errno == EPERM) // No permission to send signal
+				{
+					cerr << "No permission to send signal!" << endl;
+				}
+				else
+					cerr << "Signal sent. All Ok!" << endl;
 			}
+		}
+		else if (name == "(ServerDB)")
+		{
+			pid_t pid = stoi(pidd);
+			int  killReturn = kill(pid, SIGKILL);
+			if (killReturn == -1)
+			{
+				if (errno == ESRCH)      // pid does not exist
+				{
+					cerr << "Group does not exist!" << endl;
+				}
+				else if (errno == EPERM) // No permission to send signal
+				{
+					cerr << "No permission to send signal!" << endl;
+				}
+				else
+					cerr << "Signal sent. All Ok!" << endl;
+			}	
+		}
+		else if (name == "(MainServer)")
+		{
+			pid_t pid = stoi(pidd);
+			int  killReturn = kill(pid, SIGKILL);
+			if (killReturn == -1)
+			{
+				if (errno == ESRCH)      // pid does not exist
+				{
+					cerr << "Group does not exist!" << endl;
+				}
+				else if (errno == EPERM) // No permission to send signal
+				{
+					cerr << "No permission to send signal!" << endl;
+				}
+				else
+					cerr << "Signal sent. All Ok!" << endl;
+			}	
+		}
+		else if (name == "(MQTT_Worker)")
+		{
+			pid_t pid = stoi(pidd);
+			int  killReturn = kill(pid, SIGKILL);
+			if (killReturn == -1)
+			{
+				if (errno == ESRCH)      // pid does not exist
+				{
+					cerr << "Group does not exist!" << endl;
+				}
+				else if (errno == EPERM) // No permission to send signal
+				{
+					cerr << "No permission to send signal!" << endl;
+				}
+				else
+					cerr << "Signal sent. All Ok!" << endl;
+			}	
 		}
 	}
 	closedir(__dir_proc);
-	cerr << 11 << endl;
 	for (size_t i = 0; i < __fields.size(); i++)
 	{
 		try
@@ -262,7 +310,6 @@ void Resurrector::__resetProgramms()
 			cerr << "Reset " << e.what() << endl;
 		}
 	}
-	cerr << 12 << endl;
 }
 
 int main(int argc, char* argv[])

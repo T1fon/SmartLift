@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <fstream>
 #include <cerrno>
+#include <algorithm>
 
 #include "../GlobalModules/Config/Config.hpp"
 #include "../GlobalModules/Log/Log.hpp"
@@ -36,12 +37,12 @@ private:
 	static const int CONFIG_NUM_FIELDS = 5;
 	struct dirent* __dir_entity;
 	DIR* __dir_proc;
-	bool __flag_worker;
-	bool __flag_db;
-	bool __flag_main_server;
-	bool __flag_mqtt_worker;
+	int __worker_count = 0;
+	int __db_count = 0;
+	int __ms_count = 0;
+	int __mqtt_count = 0;
 	vector<string> CONFIG_FIELDS = { "Time_check", "Time_reset", "ServerDB", "MainServer", "Worker", "MQTT_Worker", "Count_threads"};
-	vector<string> __fields = {"Worker"};
+	vector<string> __fields = {"ServerDB", "MainServer", "Worker", "MQTT_Worker"};
 
 	void __checkWorking();
 	void __resetProgramms();

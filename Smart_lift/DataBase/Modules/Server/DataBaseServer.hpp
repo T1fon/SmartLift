@@ -595,7 +595,7 @@ public:
 		string port = __config_info.at("Port");
 		int port_go = stoi(port);
 		cerr << "port_go " << port_go << endl;
-		__acceptor = make_shared<tcp::acceptor>(*__ioc, tcp::endpoint(tcp::v4(), port_go));
+		__acceptor = make_shared<boost::asio::ip::tcp::acceptor>(*__ioc, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port_go));
 		cerr << "here" << endl;
 		__timer = make_shared<net::deadline_timer>(*__ioc);
 		cerr << "or here" << endl;
@@ -604,7 +604,7 @@ public:
 	void run()
 	{
 		__timer->expires_from_now(boost::posix_time::hours(24));
-		__timer->async_wait(boost::bind(&Server::__resetTimer, shared_from_this()));
+		__timer->async_wait(boost::bind(&Server::__resetTimer, this));
 		__doAccept();
 	}
 	void stop()

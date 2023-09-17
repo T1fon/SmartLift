@@ -84,6 +84,7 @@ public:
 			__socket_dB = make_shared<tcp::socket>(__ioc);
 			__db_client = make_shared<ClientDB>(__ip_db, __port_db, __db_log, __db_pas, __name, __socket_dB, callback);
 			__end_point = make_shared<tcp::endpoint>(tcp::endpoint(net::ip::address::from_string(__ip_ms), stoi(__port_ms)));
+			cerr << "IP " << net::ip::address::from_string(__ip_ms) << " port " << stoi(__port_ms) << endl;
 
 
 		}
@@ -183,7 +184,7 @@ private:
 
 	void __connectToMS()
 	{
-		__socket->async_connect(*__end_point, boost::bind(&Worker::__sendConnect, shared_from_this(), boost::placeholders::_1));
+		__socket->async_connect(*__end_point, boost::bind(&Worker::__sendConnect, this, boost::placeholders::_1));
 	}
 
 	void __sendConnect(const boost::system::error_code& eC)
