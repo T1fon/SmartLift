@@ -110,8 +110,8 @@ void Session::stop() {
     _ping_timer.cancel();
     _dead_ping_timer.cancel();
     try{
-        _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send);
-        _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+        //_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send);
+        //_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
         if (_socket.is_open()) {
             _socket.close();
         }

@@ -23,8 +23,8 @@ void MSWorker::start(std::shared_ptr<std::shared_ptr<std::map<std::string, std::
 }
 void MSWorker::stop() {
 	try{
-        __socket->shutdown(boost::asio::ip::tcp::socket::shutdown_send);
-        __socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
+        //__socket->shutdown(boost::asio::ip::tcp::socket::shutdown_send);
+        //__socket->shutdown(boost::asio::ip::tcp::socket::shutdown_receive);
         if (__socket->is_open()) {
             __socket->close();
         }
