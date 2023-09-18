@@ -101,8 +101,8 @@ public:
 	{
 		try
 		{
-			__socket->shutdown(tcp::socket::shutdown_send);
-			__socket->shutdown(tcp::socket::shutdown_receive);
+			/*__socket->shutdown(tcp::socket::shutdown_send);
+			__socket->shutdown(tcp::socket::shutdown_receive);*/
 			if (__socket->is_open())
 			{
 				__socket->close();

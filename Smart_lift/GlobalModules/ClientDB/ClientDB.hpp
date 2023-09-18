@@ -52,6 +52,7 @@ public:
 	}
 	~ClientDB()
 	{
+		cerr << "~ClientDB()" << endl;
 		this->stop();
 		delete[] __buf_recive;
 	}
@@ -65,8 +66,8 @@ public:
 	{
 		try
 		{
-			__socket->shutdown(tcp::socket::shutdown_send);
-			__socket->shutdown(tcp::socket::shutdown_receive);
+			//__socket->shutdown(tcp::socket::shutdown_send);
+			//__socket->shutdown(tcp::socket::shutdown_receive);
 			if (__socket->is_open())
 			{
 				__socket->close();
@@ -88,6 +89,7 @@ public:
 			//cerr << "cond " << __queue_conditions.size() << " tables" << __queue_tables.size() << endl;
 			if (__queue_conditions.size() != __queue_tables.size())
 			{
+				cerr << "setQuerys" << endl;
 				cerr << "ERROR, Not full conditions WHERE( if WHERE is not needed, put " ")";
 				this->stop();
 			}
@@ -121,6 +123,7 @@ private:
 			#else
 				Sleep(2000);
 			#endif
+			cerr << "__checkConnect" << endl;
 			this->stop();
 			this->start();
 			return;
@@ -130,6 +133,7 @@ private:
 			if (__flag_disconnect == true)
 			{
 				cerr << "no connect" << endl;
+				cerr << "__checkConnect" << endl;
 				this->stop();
 			}
 			else
@@ -183,6 +187,7 @@ private:
 		}
 		else
 		{
+			cerr << "__queryGenerator()" << endl;
 			__callback_f(__resp_data);
 			this->stop();
 		}
@@ -192,7 +197,7 @@ private:
 	{
 		if (error_code)
 		{
-			//cerr << "sendConnect" << error_code.what() << endl;
+			cerr << "sendConnect" << error_code.what() << endl;
 			this->stop();
 			this->start();
 			return;
