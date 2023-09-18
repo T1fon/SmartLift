@@ -4,16 +4,15 @@
 #include <iostream>
 using namespace std;
 
-MQTTWorker::MQTTWorker(string config_file_name) {
-    __config_file_name = config_file_name;
+MQTTWorker::MQTTWorker() {
 }
 MQTTWorker::~MQTTWorker() {
     this->stop();
 }
-int MQTTWorker::init() {
-
+int MQTTWorker::init(string path_to_config_file) {
+    
     __logger = make_shared<Log>("", "test","MQTTWorker");
-    __configer = make_shared<Config>(__logger,"./","");
+    __configer = make_shared<Config>(__logger,"./",path_to_config_file);
     
     __configer->readConfig();
     __config_data = __configer->getConfigInfo();
@@ -92,6 +91,8 @@ void MQTTWorker::stop() {
 void MQTTWorker::moveLift(string lu_description, string floor_number, string station_id) {
     string temp_lu_descriptor = lu_description.substr(1, lu_description.size()-2);
     if(__mqtt_broker->publish(temp_lu_descriptor, "LU" + temp_lu_descriptor +"/set/cmd", "{\"cmdlft\":[1," + floor_number + "]}")){
+        //__mqtt_broker->publish(temp_lu_descriptor, "LU" + temp_lu_descriptor +"/set/cmd", "{\"cmdlft\":[2," + floor_number + "]}");
+        //__mqtt_broker->publish(temp_lu_descriptor, "LU" + temp_lu_descriptor +"/set/cmd", "{\"cmdlft\":[3," + floor_number + "]}");
         cout << "Publish: Success " << lu_description << " " << floor_number << endl;
         __ms_worker->responseMove(station_id, true);
     }
@@ -177,8 +178,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    MQTTWorker worker(config_file_name);
-    if (worker.init() != MQTTWorker::SUCCESSFUL) {
+    MQTTWorker worker;
+    if (worker.init(config_file_name) != MQTTWorker::SUCCESSFUL) {
         cout << "Error reading Config file" << endl;
         return -1;
     }

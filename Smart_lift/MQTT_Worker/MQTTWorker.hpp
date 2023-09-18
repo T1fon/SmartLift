@@ -20,7 +20,6 @@ private:
 
 	std::shared_ptr<Config> __configer;
 	std::shared_ptr<Log> __logger;
-	string __config_file_name;
 
 	const vector<string> __CONFIG_FIELDS = {"Id","Main_server_ip", "Main_server_port",
 												  "Main_server_info_port","DB_ip","DB_port",
@@ -53,9 +52,9 @@ private:
 	void __updateTimerCallback(const boost::system::error_code& error);
 
 public:
-	MQTTWorker(string config_file_name);
+	MQTTWorker();
 	~MQTTWorker();
-	int init();
+	int init(string path_to_config_file);
 	void start();
 	void stop();
 	void moveLift(string lu_description, string floor_number, string station_id);

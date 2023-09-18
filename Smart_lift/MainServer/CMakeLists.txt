@@ -32,7 +32,7 @@ else()
 	set(OPENSSL_MSVC_STATIC_RT		 ON)
 
 	
-endif()
+endif() 
 
 
 

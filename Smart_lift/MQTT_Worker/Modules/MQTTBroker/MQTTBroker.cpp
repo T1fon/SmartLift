@@ -43,18 +43,27 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
     __end_point.set_close_handler(
         [this]
     () {    
-            std::cout << "[server] closed." << std::endl;
-            auto sp = __wp.lock();
-            BOOST_ASSERT(sp);
-            __closeProc(*__connections, *__subs, sp);
+            std::cout << __name << " [server] closed." << std::endl;
+            try{
+                auto sp = __wp.lock();
+                BOOST_ASSERT(sp);
+                __closeProc(*__connections, *__subs, sp);
+            }catch(exception &e){
+                std::cerr << e.what() << std::endl;
+            }
         });
     __end_point.set_error_handler(
         [this]
     (MQTT_NS::error_code ec) {
-            std::cout << "[server] error: " << ec.message()<< " " << ec << std::endl;
-            auto sp = __wp.lock();
-            BOOST_ASSERT(sp);
-            __closeProc(*__connections, *__subs, sp);
+            std::cout <<__name << " [server] error: " << ec.message()<< " " << ec << std::endl;
+            try{
+                auto sp = __wp.lock();
+                BOOST_ASSERT(sp);
+                __closeProc(*__connections, *__subs, sp);
+            }catch(exception &e){
+                std::cerr << e.what() << std::endl;
+            }
+            
         });
 
     // set MQTT level handlers
@@ -90,7 +99,7 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
             }
             catch (exception &e) {
                 __is_live = false;
-                cout << "CLIENT NOT AUTHORIZED" << endl;
+                cout << "CLIENT " << username->to_string()  <<" NOT AUTHORIZED" << endl;
                 //auto sp = __wp.lock();
                 //BOOST_ASSERT(sp);
                 //__closeProc(*__connections, *__subs, sp);
@@ -104,7 +113,7 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
     __end_point.set_disconnect_handler(
         [this]
         () {
-            std::cout << "[server] disconnect received." << std::endl;
+            std::cout <<__name << " [server] disconnect received." << std::endl;
             auto sp = __wp.lock();
             BOOST_ASSERT(sp);
             __closeProc(*__connections, *__subs, sp);
@@ -112,25 +121,25 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
     __end_point.set_puback_handler(
         []
     (packet_id_t packet_id) {
-            std::cout << "[server] puback received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] puback received. packet_id: " << packet_id << std::endl;
             return true;
         });
     __end_point.set_pubrec_handler(
         []
     (packet_id_t packet_id) {
-            std::cout << "[server] pubrec received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] pubrec received. packet_id: " << packet_id << std::endl;
             return true;
         });
     __end_point.set_pubrel_handler(
         []
     (packet_id_t packet_id) {
-            std::cout << "[server] pubrel received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] pubrel received. packet_id: " << packet_id << std::endl;
             return true;
         });
     __end_point.set_pubcomp_handler(
         []
     (packet_id_t packet_id) {
-            std::cout << "[server] pubcomp received. packet_id: " << packet_id << std::endl;
+            //std::cout << "[server] pubcomp received. packet_id: " << packet_id << std::endl;
             return true;
         });
     __end_point.set_publish_handler(
@@ -139,17 +148,17 @@ void MQTTBrokerSession::init(shared_ptr<shared_ptr<map<string, string>>> sp_db_m
         MQTT_NS::publish_options pubopts,
         MQTT_NS::buffer topic_name,
         MQTT_NS::buffer contents) {
-            std::cout << "PUBLISH START" << std::endl;
+            //std::cout << "PUBLISH START" << std::endl;
             ///////////////////////////std::cout << "[server] publish received."
                 //<< " dup: " << pubopts.get_dup()
                 //<< " qos: " << pubopts.get_qos()
                 //<< " retain: " << pubopts.get_retain() << std::endl;
             //if (packet_id)
                 //std::cout << "[server] packet_id: " << *packet_id << std::endl;
-            //std::cout << "[server] topic_name: " << topic_name << std::endl;
-            //std::cout << "[server] contents: " << contents << std::endl;
+            std::cout << __name <<" [server] topic_name: " << topic_name << std::endl;
+            std::cout << __name <<" [server] contents: " << contents << std::endl;
             
-            std::cout << "PUBLISH END" << std::endl;
+            //std::cout << "PUBLISH END" << std::endl;
             return true;
         });
     __end_point.set_subscribe_handler(
@@ -197,9 +206,11 @@ void MQTTBrokerSession::publish(string topic,string message){
     __worker->async_publish(topic, message);
 }
 
-
-MQTTBroker::MQTTBroker() {}
-MQTTBroker::MQTTBroker(shared_ptr<MQTT_NS::server<>> server):__server(server){}
+MQTTBroker::MQTTBroker(){}
+MQTTBroker::MQTTBroker(shared_ptr<MQTT_NS::server<>> server):
+    __server(server)
+{
+}
 
 void MQTTBroker::setServer(shared_ptr<MQTT_NS::server<>> server) {
     __server = server;
@@ -216,19 +227,51 @@ void MQTTBroker::init(){
         [this](con_sp_t spep) {
             std::cout << "accept" << std::endl;
             size_t positions = __mqtt_sessions.size();
-            __mqtt_sessions.push_back(MQTTBrokerSession(spep, std::make_shared<set<con_sp_t>>(__connections), std::make_shared<mi_sub_con>(__subs)));
+            __mqtt_sessions.push_back(MQTTBrokerSession(spep, 
+                                                        std::make_shared<set<con_sp_t>>(__connections), 
+                                                        std::make_shared<mi_sub_con>(__subs)));
             try{
                 __mqtt_sessions.at(positions).init(__sp_db_map_login_password);
+                //__kill_timer->expires_from_now(boost::posix_time::seconds(__KILL_TIME_CHECK));
+                //__kill_timer->async_wait(boost::bind(&MQTTBroker::checkActiveSessions, shared_from_this(),_1));
             }catch(exception &e){
                 std::cout <<std::endl<< "ERROR IN POS" << std::endl;
             }
-            
         }
     );
 }
+/*
+void MQTTBroker::checkActiveSessions(const boost::system::error_code& error){
+    bool kill = false;
+    if(error){
+        cerr << "checkActiveSessions: " << error.what() << endl;
+        //__kill_timer->expires_from_now(boost::posix_time::seconds(__KILL_TIME_CHECK));
+        //__kill_timer->async_wait(boost::bind(&MQTTBroker::checkActiveSessions, shared_from_this(),_1));
+        return;
+    }
+    for(auto i = __mqtt_sessions.begin(), end = __mqtt_sessions.end(); i != end; i++){
+        if(!i->isLive()){
+            __mqtt_sessions.erase(i);
+            kill = true;
+            break;
+        }
+    }
+    if(kill){
+        __kill_timer->expires_from_now(boost::posix_time::seconds(1));
+        __kill_timer->async_wait(boost::bind(&MQTTBroker::checkActiveSessions, shared_from_this(),_1));
+    }else{
+        __kill_timer->expires_from_now(boost::posix_time::seconds(__KILL_TIME_CHECK));
+        __kill_timer->async_wait(boost::bind(&MQTTBroker::checkActiveSessions, shared_from_this(),_1));
+    }
+    
+
+}
+*/
 
 void MQTTBroker::start(shared_ptr<shared_ptr<map<string, string>>> sp_db_map_login_password){
     __sp_db_map_login_password = sp_db_map_login_password;
+    //__kill_timer = make_shared<boost::asio::deadline_timer>(*ctx);
+    
     /*for (auto i = (*__sp_db_map_login_password)->begin(); i != (*__sp_db_map_login_password)->end(); i++) {
         cout << i->first << " " << i->second << endl;
     }*/

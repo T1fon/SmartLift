@@ -1,9 +1,10 @@
 set(MODULES "Modules")
 set(GLOBAL_MODULES "../GlobalModules")
 
-if(UNIX)
+if(UNIX) 
 	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")
-	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
+	set(BOOST_INCLUDEDIR "${BOOST_ROOT}") 
+	
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 
 	set(MQTT_PATH "/home/vato/Vato/SmartLift/mqtt/mqtt_cpp/include")
@@ -15,7 +16,7 @@ else()
 	set(MQTT_PATH "C:/Vato/My_Programs/LKDS/MQTT_cpp/source/include")
 	set(CMAKE_CXX_FLAGS "/bigobj /EHsc")
 endif()
-
+ 
 
 
 set(Boost_NO_SYSTEM_PATHS		 ON)

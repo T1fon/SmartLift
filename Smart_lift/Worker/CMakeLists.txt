@@ -1,6 +1,7 @@
 
 if(UNIX)
-	set(BOOST_ROOT "/home/tifon/boost_1_83_0")
+	set(BOOST_ROOT "/home/vato/Vato/SmartLift/boost_1_83_0")	
+	#set(BOOST_ROOT "/home/tifon/boost_1_83_0")
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/bin.v2/libs")
 else() 
@@ -8,7 +9,7 @@ else()
 	set(BOOST_INCLUDEDIR "${BOOST_ROOT}")
 	set(BOOST_LIBRARYDIR "${BOOST_ROOT}/bin/x64/lib")
 endif()
-
+ 
 set(MODULES "Modules")
 set(GLOBAL_MODULES "../GlobalModules")
 set(Boost_NO_SYSTEM_PATHS		 ON)

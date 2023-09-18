@@ -29,11 +29,7 @@ Session::Session(tcp::socket&& socket,
     __reconnect_count = 0;
 }
 Session::~Session(){
-    try{
-        __stream.shutdown();
-    }catch(exception &e){
-        cerr << "Shutdown error" << endl;
-    }
+    
     cout << "KILL HTTPS SESSION" << endl;
 }
 

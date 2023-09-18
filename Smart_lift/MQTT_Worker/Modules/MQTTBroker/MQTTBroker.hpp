@@ -13,8 +13,10 @@
 #include <boost/multi_index/member.hpp>
 #include <boost/multi_index/composite_key.hpp>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 using namespace std;
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 namespace mqtt_broker {
 	namespace mi = boost::multi_index;
     using con_t = MQTT_NS::server<>::endpoint_t;
@@ -78,18 +80,21 @@ namespace mqtt_broker {
             bool isLive();
     };
 
-	class MQTTBroker {
+	class MQTTBroker: public std::enable_shared_from_this<MQTTBroker> {
 	private:
         shared_ptr<MQTT_NS::server<>> __server;
         string __port;
         set<con_sp_t> __connections;
         mi_sub_con __subs;
-        
+        //static const int __KILL_TIME_CHECK = 3; 
+        //shared_ptr<boost::asio::deadline_timer> __kill_timer;
         shared_ptr<shared_ptr<map<string, string>>> __sp_db_map_login_password;
         vector<MQTTBrokerSession> __mqtt_sessions;
+
+        void checkActiveSessions(const boost::system::error_code& error);
 	public:
-        MQTTBroker();
-		MQTTBroker(shared_ptr<MQTT_NS::server<>> server);
+		MQTTBroker();
+        MQTTBroker(shared_ptr<MQTT_NS::server<>> server);
         ~MQTTBroker();
         void setServer(shared_ptr<MQTT_NS::server<>> server);
         void init();
